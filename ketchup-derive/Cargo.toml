@@ -1,0 +1,12 @@
+[package]
+name = "ketchup-derive"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name = "ketchup_derive"
+path = "src/lib.rs"
+proc-macro = true
+
+[dependencies]
+ketchup-codegen = { path = "../ketchup-codegen" }

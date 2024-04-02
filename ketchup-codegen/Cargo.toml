@@ -1,0 +1,15 @@
+[package]
+name = "ketchup-codegen"
+version = "0.0.0"
+edition = "2021"
+license = "MIT OR Apache-2.0"
+description = "A parser that can *ketch-up* with your programming language."
+authors = [ "GreenChild04" ]
+
+[dependencies]
+beef = "0.5.2"
+fnv = "1.0.7"
+lazy_static = "1.4.0"
+proc-macro2 = "1.0.79"
+quote = "1.0.35"
+syn = { version = "2.0.53", features = ["full"] }
