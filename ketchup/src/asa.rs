@@ -13,7 +13,7 @@ pub trait ASA: IntoIterator + Default + Debug {
     /// inserts a node into a position in the `ASA`
     fn insert(&mut self, idx: usize, node: Node<Self::Token>);
     /// returns a node at a position in the `ASA`
-    fn get(&self, range: usize) -> &Node<Self::Token>;
+    fn get(&mut self, range: usize) -> &mut Node<Self::Token>;
     /// returns the length of the `ASA`
     fn len(&self) -> usize;
 }
@@ -33,8 +33,8 @@ impl<Token: Debug> ASA for Vec<Node<Token>> {
     }
 
     #[inline]
-    fn get(&self, idx: usize) -> &Node<Self::Token> {
-        &self[idx]
+    fn get(&mut self, idx: usize) -> &mut Node<Self::Token> {
+        &mut self[idx]
     }
 
     #[inline]

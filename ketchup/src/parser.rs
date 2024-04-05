@@ -1,4 +1,4 @@
-use core::{cmp::Ordering, fmt::Debug};
+use core::fmt::Debug;
 use crate::{asa, node::{Node, TokenInfo}, Span};
 
 /// Parser that generates the nodes within an `ASA`
@@ -17,10 +17,6 @@ where
     tokens: Tokens,
     /// the internal `ASA`
     asa: ASA,
-    /// a pointer to the current node in the `ASA`
-    pointer: Option<usize>,
-    /// the amount of space remaining below the current node
-    space: u8,
 }
 
 impl<Token, Tokens, ASA, TokenInformer, Error> Parser<Token, Tokens, ASA, TokenInformer, Error>
@@ -38,58 +34,75 @@ where
             tokens,
             tok_informer,
             asa: ASA::default(),
-            pointer: None,
-            space: 0,
         }
+    }
+
+    /// returns the current token & token information
+    #[inline]
+    fn get_next_tok(&mut self) -> Option<(Token, TokenInfo)> {
+        let (token, span) = self.tokens.next()?;
+        let token = token.unwrap(); // we're not gonna deal with errors yet as this is a mere PoC
+        let tok_info = (self.tok_informer)(&token, span);
+
+        Some((token, tok_info))
     }
     
     /// comsumes the parser, parses and generates the `ASA`
     #[inline]
     pub fn parse(mut self) -> ASA {
-        for token in self.tokens {
-            // grab the current token and token information
-            let (token, span) = token;
-            let token = token.unwrap(); // we're not gonna deal with errors yet as this is a mere PoC
-            let tok_info = (self.tok_informer)(&token, span);
-
-            // if the `ASA` is empty simply push to it, otherwise check the precedence
-            let mut pointer = match self.pointer {
+        let mut space = 0;
+        let mut pointer = {
+            // get token & token info, otherwise return empty `ASA`
+            let (token, tok_info) = match self.get_next_tok() {
                 Some(x) => x,
-                None => {
-                    self.asa.push(Node::new(token, tok_info.span, tok_info.space, None, tok_info.precedence));
-                    self.pointer = Some(0); // sets pointer to the pushed node
-                    continue
-                }
+                None => return self.asa, // `ASA` is empty
             };
 
-            loop { // to allow for recursive comparing against parents of nodes
-                // grab pointer information & compare precedence
-                let pointed = &self.asa.get(pointer);
-                match tok_info.precedence.cmp(&pointed.precedence) {
-                    // become owned by the pointed
-                    Ordering::Less => {
-                        self.asa.push(Node::new(token, tok_info.span, tok_info.space, Some(pointer), tok_info.precedence));
-                        self.pointer = Some(self.asa.len() - 1);
-                        break // no need for recursion
-                    },
-                    Ordering::Equal | Ordering::Greater => {
-                        match pointed.parent {
-                            None => {
-                                self.asa.insert(0, Node::new(token, tok_info.span, tok_info.space, None, tok_info.precedence));
-                                self.pointer = Some(0);
-                                break // no need for recursion as you're already at the start of the `ASA`
-                            },
-                            Some(parent) => {
-                                pointer = parent;
-                                continue // recursion
-                            },
-                        }
-                    },
+            // push the first node onto the `ASA` to be the first parent
+            self.asa.push(Node::new(token, tok_info.span, None, tok_info.precedence));
+            
+            0 // set the pointer to the first node
+        };
+
+        loop { // would use an iterator-
+            let (token, tok_info) = match self.get_next_tok() { // -but can't
+                Some(x) => x,
+                None => break,
+            };
+
+            // compare against the last pointed node
+            let pointed = self.asa.get(pointer);
+            if tok_info.precedence < pointed.precedence {
+                // become owned by the pointed
+                self.asa.push(Node::new(token, tok_info.span, Some(pointer), tok_info.precedence));
+                pointer = self.asa.len() - 1;
+            } else {
+                // take ownership of the pointed
+
+                let mut opt_parent_idx = pointed.parent.clone(); // clone is fine; `Option<usize>`
+                loop {
+                    let parent_idx = match opt_parent_idx {
+                        Some(x) => x,
+                        // if at the start of the `ASA` just insert to the start
+                        None => {
+                            self.asa.insert(0, Node::new(token, tok_info.span, None, tok_info.precedence));
+                            pointer = 0;
+                            break
+                        },
+                    };
+
+                    let parent = self.asa.get(parent_idx);
+                    if parent.precedence > tok_info.precedence {
+                        // replace the pointed and own it
+                        self.asa.insert(pointer, Node::new(token, tok_info.span, Some(parent_idx), tok_info.precedence));
+                        break
+                    }
+
+                    opt_parent_idx = parent.parent; // move on to the parent's parent (grandparent)
                 }
             }
         }
 
-        // return the built `ASA`
-        return self.asa;
+        self.asa
     }
 }
