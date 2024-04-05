@@ -1,11 +1,11 @@
-use std::cmp::Ordering;
-
+use core::{cmp::Ordering, fmt::Debug};
 use crate::{asa, node::{Node, TokenInfo}, Span};
 
 /// Parser that generates the nodes within an `ASA`
 #[derive(Debug)]
 pub struct Parser<Token, Tokens, ASA, TokenInformer, Error>
 where
+    Token: Debug,
     Error: std::fmt::Debug,
     Tokens: Iterator<Item = (Result<Token, Error>, Span)>,
     ASA: asa::ASA<Token = Token>,
@@ -25,6 +25,7 @@ where
 
 impl<Token, Tokens, ASA, TokenInformer, Error> Parser<Token, Tokens, ASA, TokenInformer, Error>
 where
+    Token: Debug,
     Error: std::fmt::Debug,
     Tokens: Iterator<Item = (Result<Token, Error>, Span)>,
     ASA: asa::ASA<Token = Token>,
@@ -44,7 +45,7 @@ where
     
     /// comsumes the parser, parses and generates the `ASA`
     #[inline]
-    pub fn parse(mut self) {
+    pub fn parse(mut self) -> ASA {
         for token in self.tokens {
             // grab the current token and token information
             let (token, span) = token;
@@ -52,7 +53,7 @@ where
             let tok_info = (self.tok_informer)(&token, span);
 
             // if the `ASA` is empty simply push to it, otherwise check the precedence
-            let pointer = match self.pointer {
+            let mut pointer = match self.pointer {
                 Some(x) => x,
                 None => {
                     self.asa.push(Node::new(token, tok_info.span, tok_info.space, None, tok_info.precedence));
@@ -61,16 +62,34 @@ where
                 }
             };
 
-            // grab pointer information & compare precedence
-            let pointed = &self.asa.get(pointer);
-            match pointed.precedence.cmp(&tok_info.precedence) {
-                // become owned by the pointed
-                Ordering::Less => {
-                    self.asa.push(Node::new(token, tok_info.span, tok_info.space, Some(pointer), tok_info.precedence));
-                    self.pointer = Some(self.asa.len() - 1);
-                },
-                _ => todo!(),
+            loop { // to allow for recursive comparing against parents of nodes
+                // grab pointer information & compare precedence
+                let pointed = &self.asa.get(pointer);
+                match tok_info.precedence.cmp(&pointed.precedence) {
+                    // become owned by the pointed
+                    Ordering::Less => {
+                        self.asa.push(Node::new(token, tok_info.span, tok_info.space, Some(pointer), tok_info.precedence));
+                        self.pointer = Some(self.asa.len() - 1);
+                        break // no need for recursion
+                    },
+                    Ordering::Equal | Ordering::Greater => {
+                        match pointed.parent {
+                            None => {
+                                self.asa.insert(0, Node::new(token, tok_info.span, tok_info.space, None, tok_info.precedence));
+                                self.pointer = Some(0);
+                                break // no need for recursion as you're already at the start of the `ASA`
+                            },
+                            Some(parent) => {
+                                pointer = parent;
+                                continue // recursion
+                            },
+                        }
+                    },
+                }
             }
         }
+
+        // return the built `ASA`
+        return self.asa;
     }
 }

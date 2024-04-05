@@ -41,5 +41,5 @@ fn main() {
     let mut parser = Parser::<Token, _, Vec<Node<Token>>, _, ()>::new(lexer.spanned(), token_informer);
     let asa = parser.parse();
 
-    println!("{:?}", asa);
+    println!("{:?}", asa.iter().map(|node| &node.token).collect::<Vec<_>>());
 }

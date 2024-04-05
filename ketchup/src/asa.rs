@@ -1,11 +1,12 @@
 //! The **Abstract Syntax Array** is like the `AST` though optimised for cache locality through the usage of an array instead of pointers to memory
 
 use crate::node::Node;
+use core::fmt::Debug;
 
 /// the **Abstract Syntax Array**, like the `AST` but in an array-like object
-pub trait ASA: IntoIterator + Default {
+pub trait ASA: IntoIterator + Default + Debug {
     /// the token used within the array
-    type Token;
+    type Token: Debug;
 
     /// pushes a node to the end of the `ASA`
     fn push(&mut self, node: Node<Self::Token>);
@@ -18,7 +19,7 @@ pub trait ASA: IntoIterator + Default {
 }
 
 /// a default implementation of `ASA` for a vector
-impl<Token> ASA for Vec<Node<Token>> {
+impl<Token: Debug> ASA for Vec<Node<Token>> {
     type Token = Token;
 
     #[inline]
