@@ -5,7 +5,7 @@ use logos::{Logos, Lexer};
 #[derive(Debug, Clone, Logos)]
 #[logos(skip r"[ \t\r\n\f]+")]
 pub enum Token {
-    #[regex(r"-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?", |lex| lex.slice().parse::<f64>().unwrap())]
+    #[regex(r"(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?", |lex| lex.slice().parse::<f64>().unwrap())]
     Number(f64),
     #[token("+")]
     Plus,
