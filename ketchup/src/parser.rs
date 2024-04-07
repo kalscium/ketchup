@@ -1,5 +1,5 @@
 use core::fmt::Debug;
-use crate::{asa, node::Node, token_info::TokenInfo, Span};
+use crate::{asa, error::Error as KError, node::Node, token_info::TokInfoOrCustom, Span};
 
 /// Parser that generates the nodes within an `ASA`
 #[derive(Debug)]
@@ -9,7 +9,7 @@ where
     Error: std::fmt::Debug,
     Tokens: Iterator<Item = (Result<Token, Error>, Span)>,
     ASA: asa::ASA<Oper = Oper>,
-    TokenInformer: Fn(Token, Span) -> TokenInfo<Oper>,
+    TokenInformer: Fn(Token, Span) -> TokInfoOrCustom<Oper, Tokens, Error, ASA>,
 {
     /// a pointer to a function that provides information about a token
     tok_informer: TokenInformer,
@@ -25,7 +25,7 @@ where
     Error: std::fmt::Debug,
     Tokens: Iterator<Item = (Result<Token, Error>, Span)>,
     ASA: asa::ASA<Oper = Oper>,
-    TokenInformer: Fn(Token, Span) -> TokenInfo<Oper>,
+    TokenInformer: Fn(Token, Span) -> TokInfoOrCustom<Oper, Tokens, Error, ASA>,
 {
     /// initialises a new parser with the provided tokens and token_info
     #[inline]
@@ -39,7 +39,7 @@ where
 
     /// returns the current token & token information
     #[inline]
-    fn get_next_tok(&mut self) -> Option<TokenInfo<Oper>> {
+    fn get_next_tok(&mut self) -> Option<TokInfoOrCustom<Oper, Tokens, Error, ASA>> {
         let (token, span) = self.tokens.next()?;
         let token = token.unwrap(); // we're not gonna deal with errors yet as this is a mere PoC
         let tok_info = (self.tok_informer)(token, span);
@@ -49,12 +49,18 @@ where
     
     /// comsumes the parser, parses and generates the `ASA`
     #[inline]
-    pub fn parse(mut self) -> ASA {
+    pub fn parse(mut self) -> Result<ASA, Vec<KError<Error>>> {
         let mut space = 0;
         let mut pointer = {
-            // get token & token info, otherwise return empty `ASA`
-            let tok_info = match self.get_next_tok() {
-                Some(x) => x, None => return self.asa, // `ASA` is empty
+            let tok_info = loop {
+                // get token & token info, otherwise return empty `ASA`
+                match self.get_next_tok() {
+                    Some(TokInfoOrCustom::TokenInfo(x)) => break x,
+                    Some(TokInfoOrCustom::Custom(f)) => {
+                        f(&mut self.tokens, &mut self.asa)?;
+                    },
+                    None => return Ok(self.asa), // `ASA` is empty
+                };
             };
 
             // push the first node onto the `ASA` to be the first parent
@@ -65,7 +71,11 @@ where
 
         loop { // would use an iterator-
             let tok_info = match self.get_next_tok() { // -but can't
-                Some(x) => x,
+                Some(TokInfoOrCustom::TokenInfo(x)) => x,
+                Some(TokInfoOrCustom::Custom(f)) => {
+                    f(&mut self.tokens, &mut self.asa)?;
+                    continue;
+                },
                 None => break,
             };
 
@@ -103,6 +113,6 @@ where
             }
         }
 
-        self.asa
+        Ok(self.asa)
     }
 }

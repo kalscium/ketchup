@@ -1,4 +1,9 @@
-use crate::Span;
+use crate::{Span, error::Error as KError};
+
+pub enum TokInfoOrCustom<Oper, Tokens, Error, ASA> {
+    TokenInfo(TokenInfo<Oper>),
+    Custom(Box<dyn Fn(&mut Tokens, &mut ASA) -> Result<(), Vec<KError<Error>>>>),
+}
 
 #[derive(Debug)]
 pub struct TokenInfo<Oper> {

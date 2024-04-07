@@ -1,4 +1,4 @@
-use ketchup::{node::Node, token_info::TokenInfo, parser::Parser, Span};
+use ketchup::{node::Node, parser::Parser, token_info::{TokInfoOrCustom, TokenInfo}, Span};
 use logos::Logos;
 
 #[derive(Debug, Clone, Logos)]
@@ -25,7 +25,7 @@ pub enum Oper {
     Div,
 }
 
-fn token_informer(token: Token, span: Span) -> TokenInfo<Oper> {
+fn token_informer<'a, Tokens>(token: Token, span: Span) -> TokInfoOrCustom<Oper, Tokens, (), Vec<Node<Oper>>> {
     use Token as T;
     use Oper as O;
     let (precedence, space, oper) = match token {
@@ -36,12 +36,12 @@ fn token_informer(token: Token, span: Span) -> TokenInfo<Oper> {
         T::Minus => (2, 2, O::Sub),
     };
 
-    TokenInfo {
+    TokInfoOrCustom::TokenInfo(TokenInfo {
         oper,
         span,
         space,
         precedence,
-    }
+    })
 }
 
 fn main() {
@@ -49,7 +49,13 @@ fn main() {
     
     let lexer = Token::lexer(SRC);
     let parser = Parser::<Token, Oper, _, Vec<Node<Oper>>, _, ()>::new(lexer.spanned(), token_informer);
-    let asa = parser.parse();
+    let asa = match parser.parse() {
+        Ok(x) => x,
+        Err(e) => {
+            e.iter().for_each(|x| println!("{x:?}"));
+            panic!("an error occurred");
+        },
+    };
 
     println!("{:?}", asa.iter().map(|node| &node.oper).collect::<Vec<_>>());
 }
