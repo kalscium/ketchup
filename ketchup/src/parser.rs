@@ -3,13 +3,13 @@ use crate::{asa, node::{Node, TokenInfo}, Span};
 
 /// Parser that generates the nodes within an `ASA`
 #[derive(Debug)]
-pub struct Parser<Token, Tokens, ASA, TokenInformer, Error>
+pub struct Parser<Token, Oper, Tokens, ASA, TokenInformer, Error>
 where
-    Token: Debug,
+    Oper: Debug,
     Error: std::fmt::Debug,
     Tokens: Iterator<Item = (Result<Token, Error>, Span)>,
-    ASA: asa::ASA<Token = Token>,
-    TokenInformer: Fn(&Token, Span) -> TokenInfo,
+    ASA: asa::ASA<Oper = Oper>,
+    TokenInformer: Fn(Token, Span) -> (Oper, TokenInfo),
 {
     /// a pointer to a function that provides information about a token
     tok_informer: TokenInformer,
@@ -19,13 +19,13 @@ where
     asa: ASA,
 }
 
-impl<Token, Tokens, ASA, TokenInformer, Error> Parser<Token, Tokens, ASA, TokenInformer, Error>
+impl<Token, Oper, Tokens, ASA, TokenInformer, Error> Parser<Token, Oper, Tokens, ASA, TokenInformer, Error>
 where
-    Token: Debug,
+    Oper: Debug,
     Error: std::fmt::Debug,
     Tokens: Iterator<Item = (Result<Token, Error>, Span)>,
-    ASA: asa::ASA<Token = Token>,
-    TokenInformer: Fn(&Token, Span) -> TokenInfo,
+    ASA: asa::ASA<Oper = Oper>,
+    TokenInformer: Fn(Token, Span) -> (Oper, TokenInfo),
 {
     /// initialises a new parser with the provided tokens and token_info
     #[inline]
@@ -39,12 +39,12 @@ where
 
     /// returns the current token & token information
     #[inline]
-    fn get_next_tok(&mut self) -> Option<(Token, TokenInfo)> {
+    fn get_next_tok(&mut self) -> Option<(Oper, TokenInfo)> {
         let (token, span) = self.tokens.next()?;
         let token = token.unwrap(); // we're not gonna deal with errors yet as this is a mere PoC
-        let tok_info = (self.tok_informer)(&token, span);
+        let (oper, tok_info) = (self.tok_informer)(token, span);
 
-        Some((token, tok_info))
+        Some((oper, tok_info))
     }
     
     /// comsumes the parser, parses and generates the `ASA`
@@ -54,8 +54,7 @@ where
         let mut pointer = {
             // get token & token info, otherwise return empty `ASA`
             let (token, tok_info) = match self.get_next_tok() {
-                Some(x) => x,
-                None => return self.asa, // `ASA` is empty
+                Some(x) => x, None => return self.asa, // `ASA` is empty
             };
 
             // push the first node onto the `ASA` to be the first parent

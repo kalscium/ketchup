@@ -12,33 +12,43 @@ pub enum Token {
     #[token("-")]
     Minus,
     #[token("*")]
-    Mul,
+    Star,
     #[token("/")]
+    Slash,
+}
+
+#[derive(Debug, Clone)]
+pub enum Oper {
+    Num(f64),
+    Add,
+    Sub,
+    Mul,
     Div,
 }
 
-fn token_informer(token: &Token, span: Span) -> TokenInfo {
+fn token_informer(token: Token, span: Span) -> (Oper, TokenInfo) {
     use Token as T;
-    let (precedence, space) = match token {
-        T::Number(_) => (0, 0),
-        T::Mul => (1, 2),
-        T::Div => (1, 2),
-        T::Plus => (2, 2),
-        T::Minus => (2, 2),
+    use Oper as O;
+    let (precedence, space, oper) = match token {
+        T::Number(x) => (0, 0, O::Num(x)),
+        T::Star => (1, 2, O::Mul),
+        T::Slash => (1, 2, O::Div),
+        T::Plus => (2, 2, O::Add),
+        T::Minus => (2, 2, O::Sub),
     };
 
-    TokenInfo {
+    (oper, TokenInfo {
         span,
         space,
         precedence,
-    }
+    })
 }
 
 fn main() {
     const SRC: &'static str = "1 + 2 * 3 / 4 / 8 + 27";
     
     let lexer = Token::lexer(SRC);
-    let mut parser = Parser::<Token, _, Vec<Node<Token>>, _, ()>::new(lexer.spanned(), token_informer);
+    let parser = Parser::<Token, Oper, _, Vec<Node<Oper>>, _, ()>::new(lexer.spanned(), token_informer);
     let asa = parser.parse();
 
     println!("{:?}", asa.iter().map(|node| &node.token).collect::<Vec<_>>());
