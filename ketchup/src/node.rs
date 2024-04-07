@@ -2,18 +2,6 @@ use crate::Span;
 use core::fmt::Debug;
 
 #[derive(Debug)]
-pub struct TokenInfo<Oper> {
-    /// the type of operation the token is
-    pub oper: Oper,
-    /// the location of the token
-    pub span: Span,
-    /// the amount of inputs the token/node takes
-    pub space: u8,
-    /// the precedence of the token
-    pub precedence: u8,
-}
-
-#[derive(Debug)]
 /// a single node in the `ASA`
 pub struct Node<Token: Debug> {
     /// the interal type of the node

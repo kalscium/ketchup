@@ -1,5 +1,5 @@
 use core::fmt::Debug;
-use crate::{asa, node::{Node, TokenInfo}, Span};
+use crate::{asa, node::Node, token_info::TokenInfo, Span};
 
 /// Parser that generates the nodes within an `ASA`
 #[derive(Debug)]

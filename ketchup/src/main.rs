@@ -1,4 +1,4 @@
-use ketchup::{node::{Node, TokenInfo}, parser::Parser, Span};
+use ketchup::{node::Node, token_info::TokenInfo, parser::Parser, Span};
 use logos::Logos;
 
 #[derive(Debug, Clone, Logos)]
