@@ -1,6 +1,5 @@
-use std::cmp::Ordering;
-use ketchup::{asa::{self, ASA}, node::{Node, TokenInfo}, parser::Parser, Span};
-use logos::{Logos, Lexer};
+use ketchup::{node::{Node, TokenInfo}, parser::Parser, Span};
+use logos::Logos;
 
 #[derive(Debug, Clone, Logos)]
 #[logos(skip r"[ \t\r\n\f]+")]
@@ -26,7 +25,7 @@ pub enum Oper {
     Div,
 }
 
-fn token_informer(token: Token, span: Span) -> (Oper, TokenInfo) {
+fn token_informer(token: Token, span: Span) -> TokenInfo<Oper> {
     use Token as T;
     use Oper as O;
     let (precedence, space, oper) = match token {
@@ -37,11 +36,12 @@ fn token_informer(token: Token, span: Span) -> (Oper, TokenInfo) {
         T::Minus => (2, 2, O::Sub),
     };
 
-    (oper, TokenInfo {
+    TokenInfo {
+        oper,
         span,
         space,
         precedence,
-    })
+    }
 }
 
 fn main() {

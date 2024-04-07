@@ -2,7 +2,9 @@ use crate::Span;
 use core::fmt::Debug;
 
 #[derive(Debug)]
-pub struct TokenInfo {
+pub struct TokenInfo<Oper> {
+    /// the type of operation the token is
+    pub oper: Oper,
     /// the location of the token
     pub span: Span,
     /// the amount of inputs the token/node takes
