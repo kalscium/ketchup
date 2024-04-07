@@ -97,6 +97,7 @@ where
                         break
                     }
 
+                    pointer = parent_idx;
                     opt_parent_idx = parent.parent; // move on to the parent's parent (grandparent)
                 }
             }
