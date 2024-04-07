@@ -3,9 +3,9 @@ use core::fmt::Debug;
 
 #[derive(Debug)]
 /// a single node in the `ASA`
-pub struct Node<Token: Debug> {
+pub struct Node<Oper: Debug> {
     /// the interal type of the node
-    pub token: Token,
+    pub oper: Oper,
     /// the location of that node's token
     pub span: Span,
     /// the parent of the node in the `ASA`
@@ -14,12 +14,12 @@ pub struct Node<Token: Debug> {
     pub precedence: u8,
 }
 
-impl<Token: Debug> Node<Token> {
+impl<Oper: Debug> Node<Oper> {
     /// creates a new node
     #[inline]
-    pub fn new(token: Token, span: Span, parent: Option<usize>, precedence: u8) -> Self {
+    pub fn new(oper: Oper, span: Span, parent: Option<usize>, precedence: u8) -> Self {
         Self {
-            token,
+            oper,
             span,
             parent,
             precedence,

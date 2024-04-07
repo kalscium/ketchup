@@ -51,5 +51,5 @@ fn main() {
     let parser = Parser::<Token, Oper, _, Vec<Node<Oper>>, _, ()>::new(lexer.spanned(), token_informer);
     let asa = parser.parse();
 
-    println!("{:?}", asa.iter().map(|node| &node.token).collect::<Vec<_>>());
+    println!("{:?}", asa.iter().map(|node| &node.oper).collect::<Vec<_>>());
 }
