@@ -50,7 +50,6 @@ where
     /// comsumes the parser, parses and generates the `ASA`
     #[inline]
     pub fn parse(mut self) -> Result<ASA, Vec<KError<Error>>> {
-        let mut space = 0;
         let mut pointer = {
             let tok_info = loop {
                 // get token & token info, otherwise return empty `ASA`
@@ -64,7 +63,7 @@ where
             };
 
             // push the first node onto the `ASA` to be the first parent
-            self.asa.push(Node::new(tok_info.oper, tok_info.span, None, tok_info.precedence));
+            self.asa.push(Node::new(tok_info.oper, tok_info.span, None, tok_info.precedence, tok_info.space));
             
             0 // set the pointer to the first node
         };
@@ -83,7 +82,7 @@ where
             let pointed = self.asa.get(pointer);
             if tok_info.precedence < pointed.precedence {
                 // become owned by the pointed
-                self.asa.push(Node::new(tok_info.oper, tok_info.span, Some(pointer), tok_info.precedence));
+                self.asa.push(Node::new(tok_info.oper, tok_info.span, Some(pointer), tok_info.precedence, tok_info.space));
                 pointer = self.asa.len() - 1;
             } else {
                 // take ownership of the pointed
@@ -94,7 +93,7 @@ where
                         Some(x) => x,
                         // if at the start of the `ASA` just insert to the start
                         None => {
-                            self.asa.insert(0, Node::new(tok_info.oper, tok_info.span, None, tok_info.precedence));
+                            self.asa.insert(0, Node::new(tok_info.oper, tok_info.span, None, tok_info.precedence, tok_info.space));
                             pointer = 0;
                             break
                         },
@@ -103,7 +102,7 @@ where
                     let parent = self.asa.get(parent_idx);
                     if parent.precedence > tok_info.precedence {
                         // replace the pointed and own it
-                        self.asa.insert(pointer, Node::new(tok_info.oper, tok_info.span, Some(parent_idx), tok_info.precedence));
+                        self.asa.insert(pointer, Node::new(tok_info.oper, tok_info.span, Some(parent_idx), tok_info.precedence, tok_info.space));
                         break
                     }
 
@@ -111,6 +110,16 @@ where
                     opt_parent_idx = parent.parent; // move on to the parent's parent (grandparent)
                 }
             }
+        }
+
+        // if an operation has a missing input then throw an error
+        let pointed = self.asa.get(pointer);
+        if pointed.space != 0 {
+            return Err(vec![
+                KError::ExpectedOper(
+                    pointed.span.start + 2..pointed.span.end + 2
+                )
+            ]);
         }
 
         Ok(self.asa)

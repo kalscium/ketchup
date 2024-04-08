@@ -12,17 +12,20 @@ pub struct Node<Oper: Debug> {
     pub parent: Option<usize>,
     /// the precedence of the node's token type in the `ASA`
     pub precedence: u8,
+    /// the amount of space left for inputs for this node in the `ASA`
+    pub space: u8,
 }
 
 impl<Oper: Debug> Node<Oper> {
     /// creates a new node
     #[inline]
-    pub fn new(oper: Oper, span: Span, parent: Option<usize>, precedence: u8) -> Self {
+    pub fn new(oper: Oper, span: Span, parent: Option<usize>, precedence: u8, space: u8) -> Self {
         Self {
             oper,
             span,
             parent,
             precedence,
+            space,
         }
     }
 }
