@@ -5,6 +5,7 @@ edition = "2021"
 license = "MIT OR Apache-2.0"
 description = "A parser that can *ketch-up* with your programming language."
 authors = [ "GreenChild04" ]
+readme = "../README.md"
 
 [lib]
 name = "ketchup"
