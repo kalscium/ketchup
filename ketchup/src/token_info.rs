@@ -1,4 +1,4 @@
-use crate::{Span, error::Error as KError};
+use crate::{error::Error as KError, Space, Span};
 
 pub enum TokInfoOrCustom<Oper, Tokens, Error, ASA> {
     TokenInfo(TokenInfo<Oper>),
@@ -12,7 +12,7 @@ pub struct TokenInfo<Oper> {
     /// the location of the token
     pub span: Span,
     /// the amount of inputs the token/node takes
-    pub space: u8,
+    pub space: Space,
     /// the precedence of the token
     pub precedence: u8,
 }

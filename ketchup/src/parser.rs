@@ -1,5 +1,5 @@
 use core::fmt::Debug;
-use crate::{asa, error::Error as KError, node::Node, token_info::TokInfoOrCustom, Span};
+use crate::{asa, error::Error as KError, node::Node, token_info::TokInfoOrCustom, Space, Span};
 
 /// Parser that generates the nodes within an `ASA`
 #[derive(Debug)]
@@ -62,8 +62,17 @@ where
                 };
             };
 
+            // check if the token's space is valid at the start
+            if let Space::Two = tok_info.space {
+                return Err(vec![
+                    KError::DoubleSpaceConflict {
+                        span: tok_info.span,
+                    }
+                ]);
+            }
+            
             // push the first node onto the `ASA` to be the first parent
-            self.asa.push(Node::new(tok_info.oper, tok_info.span, None, tok_info.precedence, tok_info.space));
+            self.asa.push(Node::new(tok_info.oper, tok_info.span, None, tok_info.precedence, tok_info.space as u8));
             
             0 // set the pointer to the first node
         };
@@ -80,30 +89,64 @@ where
 
             // compare against the last pointed node
             let pointed = self.asa.get(pointer);
-            if tok_info.precedence < pointed.precedence {
+            if tok_info.precedence < pointed.precedence || tok_info.space as u8 == 0 {
                 // become owned by the pointed
-                self.asa.push(Node::new(tok_info.oper, tok_info.span, Some(pointer), tok_info.precedence, tok_info.space));
+
+                // check if there is enough space
+                if pointed.space <= 0 {
+                    return Err(vec![
+                        KError::UnexpectedOper(
+                            tok_info.span
+                        )
+                    ]);
+                }
+
+                // check if it's violating double-space rules
+                if pointed.space == 1 && tok_info.space as u8 == 2 {
+                    return Err(vec![
+                        KError::DoubleSpaceConflict {
+                            span: tok_info.span
+                        }
+                    ]);
+                }
+
+                // push to the `ASA` and update variables
+                pointed.space -= 1;
+                self.asa.push(Node::new(tok_info.oper, tok_info.span, Some(pointer), tok_info.precedence, tok_info.space as u8));
                 pointer = self.asa.len() - 1;
             } else {
                 // take ownership of the pointed
 
-                let mut opt_parent_idx = pointed.parent.clone(); // clone is fine; `Option<usize>`
+                let mut opt_parent_idx = Some(pointer);
                 loop {
                     let parent_idx = match opt_parent_idx {
                         Some(x) => x,
                         // if at the start of the `ASA` just insert to the start
                         None => {
-                            self.asa.insert(0, Node::new(tok_info.oper, tok_info.span, None, tok_info.precedence, tok_info.space));
+                            self.asa.get(pointer).parent = Some(0); // update pointed parent
+                            self.asa.insert(0, Node::new(tok_info.oper, tok_info.span, None, tok_info.precedence, tok_info.space as u8 -1)); // `-1` space cause it's already owning the pointed off the bat
                             pointer = 0;
+
                             break
                         },
                     };
 
                     let parent = self.asa.get(parent_idx);
                     if parent.precedence > tok_info.precedence {
+                        // update the pointed's owner
+                        self.asa.get(pointer).parent = Some(pointer);
                         // replace the pointed and own it
-                        self.asa.insert(pointer, Node::new(tok_info.oper, tok_info.span, Some(parent_idx), tok_info.precedence, tok_info.space));
+                        self.asa.insert(pointer, Node::new(tok_info.oper, tok_info.span, Some(parent_idx), tok_info.precedence, tok_info.space as u8 -1)); // `-1` space cause it's already owning the pointed off the bat
                         break
+                    }
+
+                    // check if the parent has space (you cannot own a node with non-zero space)
+                    if parent.space != 0 {
+                        return Err(vec![
+                            KError::DoubleSpaceConflict {
+                                span: tok_info.span
+                            }
+                        ]);
                     }
 
                     pointer = parent_idx;
@@ -112,16 +155,29 @@ where
             }
         }
 
-        // if an operation has a missing input then throw an error
+        // if an operation or it's parent has a missing input then throw an error
         let pointed = self.asa.get(pointer);
         if pointed.space != 0 {
             return Err(vec![
-                KError::ExpectedOper(
-                    pointed.span.start + 2..pointed.span.end + 2
-                )
+                KError::ExpectedOper {
+                    span: pointed.span.start + 2..pointed.span.end + 2, // replace with the actual span of the EOF
+                    precedence: pointed.precedence,
+                }
             ]);
         }
+        match pointed.parent.map(|x| self.asa.get(x)) {
+            Some(parent) if parent.space != 0 => {
+                return Err(vec![
+                    KError::ExpectedOper {
+                        span: parent.span.start + 2..parent.span.end + 2, // replace with the actual span of the EOF
+                        precedence: parent.precedence,
+                    }
+                ])
+            },
+            _ => (),
+        }
 
+        // return the completed **valid** ASA
         Ok(self.asa)
     }
 }
