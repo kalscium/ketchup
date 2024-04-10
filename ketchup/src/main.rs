@@ -45,7 +45,7 @@ fn token_informer<'a, Tokens>(token: Token, span: Span) -> TokInfoOrCustom<Oper,
 }
 
 fn main() {
-    const SRC: &'static str = "1 + 2 * 3 / 4 / 8 +- 27";
+    const SRC: &'static str = "1 + 2 * 3 / 4 / 8 + 27";
     
     let lexer = Token::lexer(SRC);
     let parser = Parser::<Token, Oper, _, Vec<Node<Oper>>, _, ()>::new(lexer.spanned(), token_informer);

@@ -63,6 +63,7 @@ where
             };
 
             // check if the token's space is valid at the start
+            // (a double-spaced token cannot be at the start of the ASA with no inputs)
             if let Space::Two = tok_info.space {
                 return Err(vec![
                     KError::DoubleSpaceConflict {
@@ -72,7 +73,7 @@ where
             }
             
             // push the first node onto the `ASA` to be the first parent
-            self.asa.push(Node::new(tok_info.oper, tok_info.span, None, tok_info.precedence, tok_info.space as u8));
+            self.asa.push(Node::new(tok_info.oper, tok_info.span, None, tok_info.precedence, tok_info.space as u8 > 0));
             
             0 // set the pointer to the first node
         };
@@ -93,7 +94,7 @@ where
                 // become owned by the pointed
 
                 // check if there is enough space
-                if pointed.space <= 0 {
+                if !pointed.space {
                     return Err(vec![
                         KError::UnexpectedOper(
                             tok_info.span
@@ -102,7 +103,7 @@ where
                 }
 
                 // check if it's violating double-space rules
-                if pointed.space == 1 && tok_info.space as u8 == 2 {
+                if pointed.space && tok_info.space as u8 == 2 {
                     return Err(vec![
                         KError::DoubleSpaceConflict {
                             span: tok_info.span
@@ -111,8 +112,8 @@ where
                 }
 
                 // push to the `ASA` and update variables
-                pointed.space -= 1;
-                self.asa.push(Node::new(tok_info.oper, tok_info.span, Some(pointer), tok_info.precedence, tok_info.space as u8));
+                pointed.space = false;
+                self.asa.push(Node::new(tok_info.oper, tok_info.span, Some(pointer), tok_info.precedence, tok_info.space as u8 > 0));
                 pointer = self.asa.len() - 1;
             } else {
                 // take ownership of the pointed
@@ -124,7 +125,7 @@ where
                         // if at the start of the `ASA` just insert to the start
                         None => {
                             self.asa.get(pointer).parent = Some(0); // update pointed parent
-                            self.asa.insert(0, Node::new(tok_info.oper, tok_info.span, None, tok_info.precedence, tok_info.space as u8 -1)); // `-1` space cause it's already owning the pointed off the bat
+                            self.asa.insert(0, Node::new(tok_info.oper, tok_info.span, None, tok_info.precedence, true));
                             pointer = 0;
 
                             break
@@ -136,12 +137,12 @@ where
                         // update the pointed's owner
                         self.asa.get(pointer).parent = Some(pointer);
                         // replace the pointed and own it
-                        self.asa.insert(pointer, Node::new(tok_info.oper, tok_info.span, Some(parent_idx), tok_info.precedence, tok_info.space as u8 -1)); // `-1` space cause it's already owning the pointed off the bat
+                        self.asa.insert(pointer, Node::new(tok_info.oper, tok_info.span, Some(parent_idx), tok_info.precedence, true)); // `-1` space cause it's already owning the pointed off the bat
                         break
                     }
 
                     // check if the parent has space (you cannot own a node with non-zero space)
-                    if parent.space != 0 {
+                    if parent.space {
                         return Err(vec![
                             KError::DoubleSpaceConflict {
                                 span: tok_info.span
@@ -157,7 +158,7 @@ where
 
         // if an operation or it's parent has a missing input then throw an error
         let pointed = self.asa.get(pointer);
-        if pointed.space != 0 {
+        if pointed.space {
             return Err(vec![
                 KError::ExpectedOper {
                     span: pointed.span.start + 2..pointed.span.end + 2, // replace with the actual span of the EOF
@@ -166,7 +167,7 @@ where
             ]);
         }
         match pointed.parent.map(|x| self.asa.get(x)) {
-            Some(parent) if parent.space != 0 => {
+            Some(parent) if parent.space => {
                 return Err(vec![
                     KError::ExpectedOper {
                         span: parent.span.start + 2..parent.span.end + 2, // replace with the actual span of the EOF
