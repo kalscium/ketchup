@@ -119,6 +119,25 @@ where
 
         Ok(pointer)
     }
+
+    /// parses the **first** token/node of the `ASA` and returns the pointer
+    #[inline]
+    fn parse_first_tok(&mut self, tok_info: TokenInfo<Oper>) -> Result<usize, KError<Error>> {
+        // check if the token's space is valid at the start
+        // (a double-spaced token cannot be at the start of the ASA with no inputs)
+        if let Space::Two = tok_info.space {
+            return Err(
+                KError::DoubleSpaceConflict {
+                    span: tok_info.span,
+                }
+            );
+        }
+    
+        // push the first node onto the `ASA` to be the first parent
+        self.asa.push(Node::new(tok_info.oper, tok_info.span, None, tok_info.precedence, tok_info.space as u8 > 0));
+    
+        Ok(0) // set the pointer to the first node
+    }
     
     /// comsumes the parser, parses and generates the `ASA`
     #[inline]
@@ -135,20 +154,7 @@ where
                 };
             };
 
-            // check if the token's space is valid at the start
-            // (a double-spaced token cannot be at the start of the ASA with no inputs)
-            if let Space::Two = tok_info.space {
-                return Err(vec![
-                    KError::DoubleSpaceConflict {
-                        span: tok_info.span,
-                    }
-                ]);
-            }
-            
-            // push the first node onto the `ASA` to be the first parent
-            self.asa.push(Node::new(tok_info.oper, tok_info.span, None, tok_info.precedence, tok_info.space as u8 > 0));
-            
-            0 // set the pointer to the first node
+            self.parse_first_tok(tok_info).map_err(|e| vec![e])?
         };
 
         loop { // would use an iterator-
