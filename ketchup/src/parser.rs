@@ -39,12 +39,15 @@ where
 
     /// returns the current token & token information
     #[inline]
-    fn get_next_tok(&mut self) -> Option<TokInfoOrCustom<Oper, Tokens, Error, ASA>> {
-        let (token, span) = self.tokens.next()?;
-        let token = token.unwrap(); // we're not gonna deal with errors yet as this is a mere PoC
+    fn get_next_tok(&mut self) -> Result<Option<TokInfoOrCustom<Oper, Tokens, Error, ASA>>, KError<Error>> {
+        let (token, span) = match self.tokens.next() {
+            Some(x) => x,
+            None => return Ok(None),
+        };
+        let token = token.map_err(|e| KError::Other(span.clone(), e))?;
         let tok_info = (self.tok_informer)(token, span);
 
-        Some(tok_info)
+        Ok(Some(tok_info))
     }
 
     /// parses only one token (doesn't consume parser) and returns the current pointer
@@ -145,7 +148,7 @@ where
         let mut pointer = {
             let tok_info = loop {
                 // get token & token info, otherwise return empty `ASA`
-                match self.get_next_tok() {
+                match self.get_next_tok().map_err(|e| vec![e])? {
                     Some(TokInfoOrCustom::TokenInfo(x)) => break x,
                     Some(TokInfoOrCustom::Custom(f)) => {
                         f(&mut self.tokens, &mut self.asa)?;
@@ -158,7 +161,7 @@ where
         };
 
         loop { // would use an iterator-
-            let tok_info = match self.get_next_tok() { // -but can't
+            let tok_info = match self.get_next_tok().map_err(|e| vec![e])? { // -but can't
                 Some(TokInfoOrCustom::TokenInfo(x)) => x,
                 Some(TokInfoOrCustom::Custom(f)) => {
                     f(&mut self.tokens, &mut self.asa)?;

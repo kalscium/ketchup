@@ -20,5 +20,5 @@ pub enum Error<Other> {
     },
 
     /// custom errors outside of ketchup
-    Other(Other),
+    Other(Span, Other),
 }
