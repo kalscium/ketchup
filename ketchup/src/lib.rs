@@ -8,9 +8,9 @@ pub mod error;
 pub type Span = std::ops::Range<usize>;
 
 /// different amounts of space a node can have
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Space {
-    Zero = 0, // `x`
-    One = 1,  // `x_`
-    Two = 2,  // `_x_`
+    Zero, // `x`
+    One,  // `x_`
+    Two,  // `_x_`
 }

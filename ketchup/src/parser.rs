@@ -55,7 +55,7 @@ where
     fn parse_once(&mut self, mut pointer: usize, tok_info: TokenInfo<Oper>) -> Result<usize, KError<Error>> {
         // compare against the last pointed node
         let pointed = self.asa.get(pointer);
-        if tok_info.precedence < pointed.precedence || tok_info.space as u8 == 0 {
+        if tok_info.precedence < pointed.precedence || tok_info.space == Space::Zero {
             // become owned by the pointed
 
             // check if there is enough space
@@ -68,7 +68,7 @@ where
             }
 
             // check if it's violating double-space rules
-            if pointed.space && tok_info.space as u8 == 2 {
+            if pointed.space && tok_info.space == Space::Two {
                 return Err(
                     KError::DoubleSpaceConflict {
                         span: tok_info.span
@@ -78,7 +78,7 @@ where
 
             // push to the `ASA` and update variables
             pointed.space = false;
-            self.asa.push(Node::new(tok_info.oper, tok_info.span, Some(pointer), tok_info.precedence, tok_info.space as u8 > 0));
+            self.asa.push(Node::new(tok_info.oper, tok_info.span, Some(pointer), tok_info.precedence, tok_info.space != Space::Zero));
             pointer = self.asa.len() - 1;
         } else {
             // take ownership of the pointed
@@ -137,7 +137,7 @@ where
         }
     
         // push the first node onto the `ASA` to be the first parent
-        self.asa.push(Node::new(tok_info.oper, tok_info.span, None, tok_info.precedence, tok_info.space as u8 > 0));
+        self.asa.push(Node::new(tok_info.oper, tok_info.span, None, tok_info.precedence, tok_info.space != Space::Zero));
     
         Ok(0) // set the pointer to the first node
     }
