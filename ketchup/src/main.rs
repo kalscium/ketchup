@@ -30,17 +30,22 @@ pub enum Oper {
     Sub,
     Mul,
     Div,
+    Neg,
+    Pos,
 }
 
-fn token_informer<'a, Tokens>(token: Token, span: Span) -> TokInfoOrCustom<Oper, Tokens, Error, Vec<Node<Oper>>> {
+fn token_informer<'a, Tokens>(token: Token, span: Span, double_space: bool) -> TokInfoOrCustom<Oper, Tokens, Error, Vec<Node<Oper>>> {
     use Token as T;
     use Oper as O;
-    let (precedence, space, oper) = match token {
-        T::Number(x) => (0, Space::Zero, O::Num(x)),
-        T::Star => (1, Space::Two, O::Mul),
-        T::Slash => (1, Space::Two, O::Div),
-        T::Plus => (2, Space::Two, O::Add),
-        T::Minus => (2, Space::Two, O::Sub),
+    let (precedence, space, oper) = match (token, double_space) {
+        (T::Number(x), _) => (0, Space::Zero, O::Num(x)),
+        (T::Plus, false) => (1, Space::One, O::Pos),
+        (T::Minus, false) => (1, Space::One, O::Neg),
+
+        (T::Star, _) => (2, Space::Two, O::Mul),
+        (T::Slash, _) => (2, Space::Two, O::Div),
+        (T::Plus, true) => (3, Space::Two, O::Add),
+        (T::Minus, true) => (3, Space::Two, O::Sub),
     };
 
     TokInfoOrCustom::TokenInfo(TokenInfo {
@@ -52,7 +57,7 @@ fn token_informer<'a, Tokens>(token: Token, span: Span) -> TokInfoOrCustom<Oper,
 }
 
 fn main() {
-    const SRC: &'static str = "1 + 2 * 3 - 4 / 8 +$ 27";
+    const SRC: &'static str = "-1 + 2 * -3 - 4 / +8 + 27";
     
     let lexer = Token::lexer(SRC);
     let parser = Parser::<Token, Oper, _, Vec<Node<Oper>>, _, Error>::new(lexer.spanned(), token_informer);

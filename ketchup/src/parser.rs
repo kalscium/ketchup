@@ -9,9 +9,10 @@ where
     Error: std::fmt::Debug,
     Tokens: Iterator<Item = (Result<Token, Error>, Span)>,
     ASA: asa::ASA<Oper = Oper>,
-    TokenInformer: Fn(Token, Span) -> TokInfoOrCustom<Oper, Tokens, Error, ASA>,
+    TokenInformer: Fn(Token, Span, bool) -> TokInfoOrCustom<Oper, Tokens, Error, ASA>,
 {
-    /// a pointer to a function that provides information about a token
+    /// a pointer to a function that provides information about a token,
+    /// it takes in the `token`, `span` of that token and also if a `double_space` is allowed and returns the `tok_info`
     tok_informer: TokenInformer,
     /// the iterator that provides the tokens for the parser
     tokens: Tokens,
@@ -25,7 +26,7 @@ where
     Error: std::fmt::Debug,
     Tokens: Iterator<Item = (Result<Token, Error>, Span)>,
     ASA: asa::ASA<Oper = Oper>,
-    TokenInformer: Fn(Token, Span) -> TokInfoOrCustom<Oper, Tokens, Error, ASA>,
+    TokenInformer: Fn(Token, Span, bool) -> TokInfoOrCustom<Oper, Tokens, Error, ASA>,
 {
     /// initialises a new parser with the provided tokens and token_info
     #[inline]
@@ -39,13 +40,13 @@ where
 
     /// returns the current token & token information
     #[inline]
-    fn get_next_tok(&mut self) -> Result<Option<TokInfoOrCustom<Oper, Tokens, Error, ASA>>, KError<Error>> {
+    fn get_next_tok(&mut self, double_space: bool) -> Result<Option<TokInfoOrCustom<Oper, Tokens, Error, ASA>>, KError<Error>> {
         let (token, span) = match self.tokens.next() {
             Some(x) => x,
             None => return Ok(None),
         };
         let token = token.map_err(|e| KError::Other(span.clone(), e))?;
-        let tok_info = (self.tok_informer)(token, span);
+        let tok_info = (self.tok_informer)(token, span, double_space);
 
         Ok(Some(tok_info))
     }
@@ -53,19 +54,20 @@ where
     /// parses only one token (doesn't consume parser) and returns the current pointer
     #[inline]
     fn parse_once(&mut self, mut pointer: usize, tok_info: TokenInfo<Oper>) -> Result<usize, KError<Error>> {
-        // compare against the last pointed node
         let pointed = self.asa.get(pointer);
+
+        // make sure there aren't any double spaces next to each other
+        if pointed.space && tok_info.space == Space::Two {
+            return Err(
+                KError::DoubleSpaceConflict {
+                    span: tok_info.span
+                }
+            );
+        }
+        
+        // compare against the last pointed node
         if tok_info.precedence < pointed.precedence || tok_info.space == Space::Zero {
             // become owned by the pointed
-
-            // check if there is enough space
-            if !pointed.space {
-                return Err(
-                    KError::UnexpectedOper(
-                        tok_info.span
-                    )
-                );
-            }
 
             // check if it's violating double-space rules
             if pointed.space && tok_info.space == Space::Two {
@@ -106,15 +108,6 @@ where
                     break
                 }
 
-                // check if the parent has space (you cannot own a node with non-zero space)
-                if parent.space {
-                    return Err(
-                        KError::DoubleSpaceConflict {
-                            span: tok_info.span
-                        }
-                    );
-                }
-
                 pointer = parent_idx;
                 opt_parent_idx = parent.parent; // move on to the parent's parent (grandparent)
             }
@@ -148,7 +141,7 @@ where
         let mut pointer = {
             let tok_info = loop {
                 // get token & token info, otherwise return empty `ASA`
-                match self.get_next_tok().map_err(|e| vec![e])? {
+                match self.get_next_tok(false).map_err(|e| vec![e])? {
                     Some(TokInfoOrCustom::TokenInfo(x)) => break x,
                     Some(TokInfoOrCustom::Custom(f)) => {
                         f(&mut self.tokens, &mut self.asa)?;
@@ -161,7 +154,8 @@ where
         };
 
         loop { // would use an iterator-
-            let tok_info = match self.get_next_tok().map_err(|e| vec![e])? { // -but can't
+            let double_space = !self.asa.get(pointer).space;
+            let tok_info = match self.get_next_tok(double_space).map_err(|e| vec![e])? { // -but can't
                 Some(TokInfoOrCustom::TokenInfo(x)) => x,
                 Some(TokInfoOrCustom::Custom(f)) => {
                     f(&mut self.tokens, &mut self.asa)?;
