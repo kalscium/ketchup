@@ -2,7 +2,7 @@ use crate::{error::Error as KError, Space, Span};
 
 pub enum TokInfoOrCustom<Oper, Tokens, Error, ASA> {
     TokenInfo(TokenInfo<Oper>),
-    Custom(Box<dyn Fn(&mut Tokens, &mut ASA) -> Result<(), Vec<KError<Error>>>>),
+    Custom(Box<dyn FnOnce(&mut Tokens, &mut ASA) -> Result<(), Vec<KError<Error>>>>),
 }
 
 #[derive(Debug)]
