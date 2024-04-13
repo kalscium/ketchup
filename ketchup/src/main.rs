@@ -34,6 +34,48 @@ pub enum Oper {
     Pos,
 }
 
+#[inline]
+fn visit_oper(idx: usize, asa: &Vec<Node<Oper>>) -> (usize, f64) {
+    let oper = &asa[idx].oper;
+    match oper {
+        Oper::Num(x) => (idx, *x),
+
+        Oper::Pos => visit_oper(idx+1, asa),
+        Oper::Neg => {
+            let (idx, x) = visit_oper(idx+1, asa);
+            (idx, -x)
+        },
+        
+        Oper::Add => {
+            let (idx, x) = visit_oper(idx+1, asa);
+            let (idx, y) = visit_oper(idx+1, asa);
+
+            (idx, x + y)
+        },
+        
+        Oper::Sub => {
+            let (idx, x) = visit_oper(idx+1, asa);
+            let (idx, y) = visit_oper(idx+1, asa);
+
+            (idx, x - y)
+        },
+        
+        Oper::Mul => {
+            let (idx, x) = visit_oper(idx+1, asa);
+            let (idx, y) = visit_oper(idx+1, asa);
+
+            (idx, x * y)
+        },
+        
+        Oper::Div => {
+            let (idx, x) = visit_oper(idx+1, asa);
+            let (idx, y) = visit_oper(idx+1, asa);
+
+            (idx, x / y)
+        },
+    }
+}
+
 fn token_informer<'a, Tokens>(token: Token, span: Span, double_space: bool) -> TokInfoOrCustom<Oper, Tokens, Error, Vec<Node<Oper>>> {
     use Token as T;
     use Oper as O;
@@ -70,5 +112,10 @@ fn main() {
     };
 
     // println!("{asa:?}");
-    println!("{:?}", asa.iter().map(|node| &node.oper).collect::<Vec<_>>());
+    println!("ASA: {:?}", asa.iter().map(|node| &node.oper).collect::<Vec<_>>());
+
+    if asa.is_empty() { return };
+
+    let out = visit_oper(0, &asa);
+    println!("result: {out:?}");
 }
