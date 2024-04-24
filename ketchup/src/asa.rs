@@ -4,7 +4,7 @@ use crate::node::Node;
 use core::fmt::Debug;
 
 /// the **Abstract Syntax Array**, like the `AST` but in an array-like object
-pub trait ASA: IntoIterator + Default + Debug {
+pub trait ASA: IntoIterator<Item = Node<Self::Oper>> + Default + Debug {
     /// the token used within the array
     type Oper: Debug;
 
@@ -14,13 +14,17 @@ pub trait ASA: IntoIterator + Default + Debug {
     fn insert(&mut self, idx: usize, node: Node<Self::Oper>);
     /// returns a node at a position in the `ASA`
     fn get(&mut self, idx: usize) -> &mut Node<Self::Oper>;
+    /// removes a node at a position in the `ASA`
+    fn remove(&mut self, idx: usize);
     /// returns the length of the `ASA`
     fn len(&self) -> usize;
+    /// returns if the asa is empty
+    fn is_empty(&self) -> bool;
 }
 
 /// a default implementation of `ASA` for a vector
-impl<Token: Debug> ASA for Vec<Node<Token>> {
-    type Oper = Token;
+impl<Oper: Debug> ASA for Vec<Node<Oper>> {
+    type Oper = Oper;
 
     #[inline]
     fn push(&mut self, node: Node<Self::Oper>) {
@@ -38,8 +42,18 @@ impl<Token: Debug> ASA for Vec<Node<Token>> {
     }
 
     #[inline]
+    fn remove(&mut self, idx: usize) {
+        self.remove(idx);
+    }
+
+    #[inline]
     fn len(&self) -> usize {
         self.len()
+    }
+
+    #[inline]
+    fn is_empty(&self) -> bool {
+        self.is_empty()
     }
 }
 

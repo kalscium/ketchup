@@ -1,7 +1,7 @@
 use crate::Span;
 
 #[derive(Debug, Clone)]
-pub enum Error<Other> {
+pub enum Error<Token, Other> {
     /// occurs when there is a node with a space of two that is placed in a way where the first input may never be fullfilled (`/1` or `1 +/ 2`)
     DoubleSpaceConflict {
         /// span of where a operation of zero space was expected (input) 
@@ -17,6 +17,12 @@ pub enum Error<Other> {
         span: Span,
         /// precedence of the node with missing inputs
         precedence: u8,
+    },
+
+    /// occurs when there is an expected eof token that isn't met
+    ExpectedEOF {
+        /// the actual `EOF` token
+        eof: Token,
     },
 
     /// custom errors outside of ketchup

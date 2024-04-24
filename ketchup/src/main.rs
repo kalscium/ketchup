@@ -1,5 +1,5 @@
-use ketchup::{node::Node, parser::Parser, token_info::{TokInfoOrCustom, TokenInfo}, Space, Span};
-use logos::Logos;
+use ketchup::{error::Error as KError, node::{Node, NodeInfo}, parser::Parser, token_info::{TokInfoOrCustom, TokenInfo}, Space, Span};
+use logos::{Logos, SpannedIter};
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub enum Error {
@@ -7,7 +7,7 @@ pub enum Error {
     UnexpectedCharacter,
 }
 
-#[derive(Debug, Clone, Logos)]
+#[derive(Debug, Clone, Logos, PartialEq)]
 #[logos(error = Error)]
 #[logos(skip r"[ \t\r\n\f]+")]
 pub enum Token {
@@ -21,6 +21,10 @@ pub enum Token {
     Star,
     #[token("/")]
     Slash,
+    #[token("(")]
+    LParen,
+    #[token(")")]
+    RParen,
 }
 
 #[derive(Debug, Clone)]
@@ -36,7 +40,11 @@ pub enum Oper {
 
 #[inline]
 fn visit_oper(idx: usize, asa: &Vec<Node<Oper>>) -> (usize, f64) {
-    let oper = &asa[idx].oper;
+    let oper = match &asa[idx] {
+        Node::Node(x) => &x.oper,
+        Node::Scoped(asa, _) => return (idx, visit_oper(0, asa).1),
+    };
+
     match oper {
         Oper::Num(x) => (idx, *x),
 
@@ -76,7 +84,18 @@ fn visit_oper(idx: usize, asa: &Vec<Node<Oper>>) -> (usize, f64) {
     }
 }
 
-fn token_informer<'a, Tokens>(token: Token, span: Span, double_space: bool) -> TokInfoOrCustom<Oper, Tokens, Error, Vec<Node<Oper>>> {
+fn parse_paren(tokens: &mut SpannedIter<'static, Token>, parent: Option<usize>) -> Result<(NodeInfo, Vec<Node<Oper>>, bool), Vec<KError<Token, Error>>> {
+    let start = tokens.span();
+    let parsed = Parser::new(tokens, Some(Token::RParen), token_informer).parse()?; // parse what's inside
+    Ok((NodeInfo { // parenthesis information
+        span: start.start..tokens.span().end,
+        parent,
+        precedence: 0,
+        space: false,
+    }, parsed, false))
+}
+
+fn token_informer(token: Token, span: Span, double_space: bool) -> TokInfoOrCustom<Oper, Token, SpannedIter<'static, Token>, Error> {
     use Token as T;
     use Oper as O;
     let (precedence, space, oper) = match (token, double_space) {
@@ -88,6 +107,9 @@ fn token_informer<'a, Tokens>(token: Token, span: Span, double_space: bool) -> T
         (T::Slash, _) => (2, Space::Two, O::Div),
         (T::Plus, true) => (3, Space::Two, O::Add),
         (T::Minus, true) => (3, Space::Two, O::Sub),
+
+        (T::RParen, _) => return TokInfoOrCustom::Custom(Box::new(move |_, _| Err(vec![KError::Other(span, Error::UnexpectedCharacter)]))),
+        (T::LParen, _) => return TokInfoOrCustom::Custom(Box::new(parse_paren)),
     };
 
     TokInfoOrCustom::TokenInfo(TokenInfo {
@@ -99,10 +121,11 @@ fn token_informer<'a, Tokens>(token: Token, span: Span, double_space: bool) -> T
 }
 
 fn main() {
-    const SRC: &'static str = "-1 + 2 * -3 - 4 / +8 + 27";
+    const SRC: &'static str = "-1 + 2 * -3 - 4 / +8 + 272 / (-(1 + 3) * 16)";
     
-    let lexer = Token::lexer(SRC);
-    let parser = Parser::<Token, Oper, _, Vec<Node<Oper>>, _, Error>::new(lexer.spanned(), token_informer);
+    let mut lexer = Token::lexer(SRC).spanned();
+    let parser = Parser::<Token, Oper, _, Vec<Node<Oper>>, _, Error>::new(&mut lexer, None, token_informer);
+
     let asa = match parser.parse() {
         Ok(x) => x,
         Err(e) => {
@@ -111,8 +134,7 @@ fn main() {
         },
     };
 
-    // println!("{asa:?}");
-    println!("ASA: {:?}", asa.iter().map(|node| &node.oper).collect::<Vec<_>>());
+    println!("{asa:?}");
 
     if asa.is_empty() { return };
 

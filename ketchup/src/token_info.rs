@@ -1,8 +1,12 @@
-use crate::{error::Error as KError, Space, Span};
+use std::fmt::Debug;
+use crate::{error::Error as KError, node::{Node, NodeInfo}, Space, Span};
 
-pub enum TokInfoOrCustom<Oper, Tokens, Error, ASA> {
+pub enum TokInfoOrCustom<Oper: Debug, Token, Tokens, Error> where
+    Tokens: Iterator<Item = (Result<Token, Error>, Span)>,
+{
     TokenInfo(TokenInfo<Oper>),
-    Custom(Box<dyn FnOnce(&mut Tokens, &mut ASA) -> Result<(), Vec<KError<Error>>>>),
+    #[allow(clippy::type_complexity)]
+    Custom(Box<dyn FnOnce(&mut Tokens, Option<usize>) -> Result<(NodeInfo, Vec<Node<Oper>>, bool), Vec<KError<Token, Error>>>>),
 }
 
 #[derive(Debug)]

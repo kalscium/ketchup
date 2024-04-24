@@ -14,3 +14,10 @@ pub enum Space {
     One,  // `x_`
     Two,  // `_x_`
 }
+
+/// performs a transformation on a value
+#[inline]
+pub fn map<T>(mut x: T, f: impl Fn(&mut T)) -> T {
+    f(&mut x);
+    x
+}
