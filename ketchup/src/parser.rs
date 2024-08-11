@@ -9,7 +9,7 @@ where
     Error: Debug,
     Tokens: Iterator<Item = (Result<Token, Error>, Span)>,
     ASA: crate::asa::ASA<Oper = Oper>,
-    OperGen: Fn(Token, &mut Tokens, bool) -> Result<OperInfo<Oper>, KError<Token, Error>>,
+    OperGen: Fn(Token, &mut Tokens, bool) -> Result<OperInfo<Oper>, Vec<KError<Token, Error>>>,
 {
     /// A function that generates an operation from a token-iterator,
     /// *(effectively a mini context-less parser)*
@@ -31,7 +31,7 @@ where
     Error: Debug,
     Tokens: Iterator<Item = (Result<Token, Error>, Span)>,
     ASA: crate::asa::ASA<Oper = Oper>,
-    OperGen: Fn(Token, &mut Tokens, bool) -> Result<OperInfo<Oper>, KError<Token, Error>>,
+    OperGen: Fn(Token, &mut Tokens, bool) -> Result<OperInfo<Oper>, Vec<KError<Token, Error>>>,
 {
     /// Initialises a new parser with the provided token iterator, optional EOF token, and operation generator
     #[inline]
@@ -46,7 +46,7 @@ where
 
     /// Returns the current oper information
     #[allow(clippy::type_complexity)]
-    fn parse_next_oper(&mut self, double_space: bool) -> Result<Option<OperInfo<Oper>>, KError<Token, Error>> {
+    fn parse_next_oper(&mut self, double_space: bool) -> Result<Option<OperInfo<Oper>>, Vec<KError<Token, Error>>> {
         let (token, span) = match self.tokens.next() {
             Some((token, span)) => (token, span),
             // if there are no more tokens left in the iterator
@@ -60,17 +60,19 @@ where
                 // also make sure there is an eof to expect in the first place
                 return if let Some(eof) = self.eof.take() {
                     let span = self.asa.get(self.asa.len()-1).info.span.end;
-                    Err(KError::ExpectedEOF {
-                        eof,
-                        span: span..span,
-                    })
+                    Err(vec![
+                        KError::ExpectedEOF {
+                            eof,
+                            span: span..span,
+                        }
+                    ])
                 } else {
                     Ok(None)
                 };
             },
         };
 
-        let token = token.map_err(|e| KError::Other(span.clone(), e))?; // lexer may throw errors
+        let token = token.map_err(|e| KError::Other(span.clone(), e)).map_err(|e| vec![e])?; // lexer may throw errors
 
         // check for lexer eof
         if Some(&token) == self.eof.as_ref() {
@@ -203,14 +205,14 @@ where
         Ok(0) // first node is the pointer
     }
 
-    pub fn parse(mut self) -> Result<ASA, KError<Token, Error>> {
+    pub fn parse(mut self) -> Result<ASA, Vec<KError<Token, Error>>> {
         let mut pointer = {
             let oper_info = match self.parse_next_oper(false)? {
                 Some(info) => info,
                 None => return Ok(self.asa), // there are no tokens to parse at all
             };
 
-            self.parse_first_tok(oper_info)?
+            self.parse_first_tok(oper_info).map_err(|e| vec![e])?
         };
 
         // iterate over and parse the rest of the tokens
@@ -221,29 +223,29 @@ where
                 None => break,
             };
 
-            pointer = self.safe_insert(pointer, oper_info)?;
+            pointer = self.safe_insert(pointer, oper_info).map_err(|e| vec![e])?;
         }
         
         // if a node has a missing input then throw an error
         let pointed = &self.asa.get(pointer).info;
         if pointed.space {
-            return Err(
+            return Err(vec![
                 KError::ExpectedOper {
                     span: pointed.span.end..pointed.span.end, // replace with the actual span of the EOF
                     precedence: pointed.precedence,
                 }
-            );
+            ]);
         }
 
         // if a node's parent has a missing input then throw an error
         match pointed.parent.map(|x| self.asa.get(x)) {
             Some(parent) if parent.info.space => {
-                return Err(
+                return Err(vec![
                     KError::ExpectedOper {
                         span: parent.info.span.end..parent.info.span.end, // replace with the actual span of the EOF
                         precedence: parent.info.precedence,
                     }
-                )
+                ])
             }
             _ => (),
         }

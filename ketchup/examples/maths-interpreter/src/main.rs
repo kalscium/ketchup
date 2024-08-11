@@ -85,7 +85,7 @@ fn visit_node(idx: usize, asa: &Vec<Node<Oper>>) -> (usize, f64) {
     }
 }
 
-fn oper_generator(token: Token, tokens: &mut SpannedIter<'_, Token>, double_space: bool) -> Result<OperInfo<Oper>, KError<Token, Error>> {
+fn oper_generator(token: Token, tokens: &mut SpannedIter<'_, Token>, double_space: bool) -> Result<OperInfo<Oper>, Vec<KError<Token, Error>>> {
     use Token as T;
     use Oper as O;
 
@@ -104,7 +104,7 @@ fn oper_generator(token: Token, tokens: &mut SpannedIter<'_, Token>, double_spac
         (T::Slash, _) => (2, Space::Double, O::Div),
         
         // parentheses
-        (T::RParen, _) => return Err(KError::UnexpectedOper(tokens.span())),
+        (T::RParen, _) => return Err(vec![KError::UnexpectedOper(tokens.span())]),
         (T::LParen, _) => {
             let start_span = tokens.span();
             
@@ -112,7 +112,7 @@ fn oper_generator(token: Token, tokens: &mut SpannedIter<'_, Token>, double_spac
 
             // make sure the parentheses aren't empty
             if asa.is_empty() {
-                return Err(KError::Other(tokens.span(), Error::EmptyBraces));
+                return Err(vec![KError::Other(tokens.span(), Error::EmptyBraces)]);
             }
             
             return Ok(OperInfo {
@@ -142,18 +142,21 @@ fn main() {
     // handle errors
     let asa = match parser.parse() {
         Ok(asa) => asa,
-        Err(err) => {
-            Report::build(ReportKind::Error, "sample.foo", 12)
-                .with_message(format!("{err:?}"))
-                .with_label(
-                    Label::new(("sample.foo", err.span().clone()))
-                        .with_message("occured here")
-                        .with_color(Color::Red)
-                )
-                .with_note("errors will look a bit funny cuz i'm too lazy to put in custom messages")
-                .finish()
-                .eprint(("sample.foo", Source::from(SRC)))
-                .unwrap();
+        Err(errs) => {
+            for err in errs {
+                Report::build(ReportKind::Error, "sample.foo", 12)
+                    .with_message(format!("{err:?}"))
+                    .with_label(
+                        Label::new(("sample.foo", err.span().clone()))
+                            .with_message("occured here")
+                            .with_color(Color::Red)
+                    )
+                    .with_note("errors will look a bit funny cuz i'm too lazy to put in custom messages")
+                    .finish()
+                    .eprint(("sample.foo", Source::from(SRC)))
+                    .unwrap();
+            }
+
             panic!("an error occured");
         },
     };
