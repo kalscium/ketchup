@@ -9,7 +9,7 @@ where
     Error: Debug,
     Tokens: Iterator<Item = (Result<Token, Error>, Span)>,
     ASA: crate::asa::ASA<Oper = Oper>,
-    OperGen: Fn(Token, &mut Tokens, bool) -> OperInfo<Oper>,
+    OperGen: Fn(Token, &mut Tokens, bool) -> Result<OperInfo<Oper>, KError<Token, Error>>,
 {
     /// A function that generates an operation from a token-iterator,
     /// *(effectively a mini context-less parser)*
@@ -31,7 +31,7 @@ where
     Error: Debug,
     Tokens: Iterator<Item = (Result<Token, Error>, Span)>,
     ASA: crate::asa::ASA<Oper = Oper>,
-    OperGen: Fn(Token, &mut Tokens, bool) -> OperInfo<Oper>,
+    OperGen: Fn(Token, &mut Tokens, bool) -> Result<OperInfo<Oper>, KError<Token, Error>>,
 {
     /// Initialises a new parser with the provided token iterator, optional EOF token, and operation generator
     #[inline]
@@ -77,7 +77,7 @@ where
             return Ok(None);
         }
 
-        let oper_info = (self.oper_gen)(token, self.tokens, double_space);
+        let oper_info = (self.oper_gen)(token, self.tokens, double_space)?;
         Ok(Some(oper_info))
     }
 

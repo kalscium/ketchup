@@ -1,5 +1,5 @@
 use ariadne::{Color, Label, Report, ReportKind, Source};
-use ketchup::{node::Node, parser::Parser, OperInfo, Space};
+use ketchup::{error::KError, node::Node, parser::Parser, OperInfo, Space};
 use logos::{Logos, SpannedIter};
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -38,7 +38,7 @@ pub enum Oper {
     Div,
     Neg,
     Pos,
-    Scope(Vec<Oper>),
+    Scope(Vec<Node<Oper>>),
 }
 
 fn visit_node(idx: usize, asa: &Vec<Node<Oper>>) -> (usize, f64) {
@@ -81,11 +81,11 @@ fn visit_node(idx: usize, asa: &Vec<Node<Oper>>) -> (usize, f64) {
             (idx, x / y)
         },
 
-        _ => todo!(),
+        Oper::Scope(asa) => (idx, visit_node(0, asa).1),
     }
 }
 
-fn oper_generator(token: Token, tokens: &mut SpannedIter<'_, Token>, double_space: bool) -> OperInfo<Oper> {
+fn oper_generator(token: Token, tokens: &mut SpannedIter<'_, Token>, double_space: bool) -> Result<OperInfo<Oper>, KError<Token, Error>> {
     use Token as T;
     use Oper as O;
 
@@ -103,20 +103,38 @@ fn oper_generator(token: Token, tokens: &mut SpannedIter<'_, Token>, double_spac
         (T::Star, _) => (2, Space::Double, O::Mul),
         (T::Slash, _) => (2, Space::Double, O::Div),
         
-        _ => todo!(),
+        // parentheses
+        (T::RParen, _) => return Err(KError::UnexpectedOper(tokens.span())),
+        (T::LParen, _) => {
+            let start_span = tokens.span();
+            
+            let asa = Parser::<'_, Token, Oper, _, Vec<Node<Oper>>, _, Error>::new(tokens, Some(Token::RParen), oper_generator).parse()?;
+
+            // make sure the parentheses aren't empty
+            if asa.is_empty() {
+                return Err(KError::Other(tokens.span(), Error::EmptyBraces));
+            }
+            
+            return Ok(OperInfo {
+                oper: O::Scope(asa),
+                span: start_span.start..tokens.span().end,
+                space: Space::None,
+                precedence: 0,
+            });
+        },
     };
 
-    OperInfo {
+    Ok(OperInfo {
         oper,
         span: tokens.span(),
         space,
         precedence,
-    }
+    })
 }
 
 fn main() {
     // source to parse
-    const SRC: &str = "1 + 45 - 2 * 3";
+    const SRC: &str = "(1 + 2) + ((1 * 4)) / 2";
 
     let mut lexer = Token::lexer(SRC).spanned();
     let parser = Parser::<'_, Token, Oper, _, Vec<Node<Oper>>, _, Error>::new(&mut lexer, None, oper_generator);

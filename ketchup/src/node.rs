@@ -1,7 +1,7 @@
 use std::fmt::Debug;
 use crate::Span;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Node<Oper: Debug> {
     /// The type of operation that the node is
     pub oper: Oper,
@@ -9,7 +9,7 @@ pub struct Node<Oper: Debug> {
     pub info: NodeInfo,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 /// Information about a node in the AST
 pub struct NodeInfo {
     /// The location of the node's token in the parsed string
