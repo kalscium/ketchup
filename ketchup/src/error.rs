@@ -20,7 +20,12 @@ pub enum KError<Token, Other> {
     },
 
     /// Occurs when there is an expected terminator (such as `)`) token that isn't met
-    ExpectedEOF(Token),
+    ExpectedEOF {
+        /// The eof token itself
+        eof: Token,
+        /// Span of where the eof was expected to be
+        span: Span,
+    },
 
     /// Custom errors outside of ketchup
     Other(Span, Other),
@@ -34,7 +39,7 @@ impl<Token, Other> KError<Token, Other> {
             K::DoubleSpaceConflict { span } => span,
             K::UnexpectedOper(span) => span,
             K::ExpectedOper { span, .. } => span,
-            K::ExpectedEOF(_) => &(0..1),
+            K::ExpectedEOF { span, .. } => span,
             K::Other(span, _) => span,
         }
     }

@@ -85,7 +85,7 @@ fn visit_node(idx: usize, asa: &Vec<Node<Oper>>) -> (usize, f64) {
     }
 }
 
-fn oper_generator(token: Token, _tokens: &mut SpannedIter<'_, Token>, double_space: bool) -> OperInfo<Oper> {
+fn oper_generator(token: Token, tokens: &mut SpannedIter<'_, Token>, double_space: bool) -> OperInfo<Oper> {
     use Token as T;
     use Oper as O;
 
@@ -108,6 +108,7 @@ fn oper_generator(token: Token, _tokens: &mut SpannedIter<'_, Token>, double_spa
 
     OperInfo {
         oper,
+        span: tokens.span(),
         space,
         precedence,
     }

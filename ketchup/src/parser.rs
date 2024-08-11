@@ -46,15 +46,24 @@ where
 
     /// Returns the current oper information
     #[allow(clippy::type_complexity)]
-    fn parse_next_oper(&mut self, double_space: bool) -> Result<Option<(OperInfo<Oper>, Span)>, KError<Token, Error>> {
+    fn parse_next_oper(&mut self, double_space: bool) -> Result<Option<OperInfo<Oper>>, KError<Token, Error>> {
         let (token, span) = match self.tokens.next() {
             Some((token, span)) => (token, span),
             // if there are no more tokens left in the iterator
             None => {
+                // if the asa is empty and there is no more tokens, then the token iterator must be empty aswell and therefore this must shortcircuit to prevent subtraction overflow errors
+                if self.asa.is_empty() {
+                    return Ok(None);
+                }
+                
                 // throw error if eof has not been reached
                 // also make sure there is an eof to expect in the first place
                 return if let Some(eof) = self.eof.take() {
-                    Err(KError::ExpectedEOF(eof))
+                    let span = self.asa.get(self.asa.len()-1).info.span.end;
+                    Err(KError::ExpectedEOF {
+                        eof,
+                        span: span..span,
+                    })
                 } else {
                     Ok(None)
                 };
@@ -69,20 +78,20 @@ where
         }
 
         let oper_info = (self.oper_gen)(token, self.tokens, double_space);
-        Ok(Some((oper_info, span)))
+        Ok(Some(oper_info))
     }
 
     /// Safely inserts an oper into the `ASA` while following `ketchup`'s rules
     ///
     /// Also returns the current pointer
-    fn safe_insert(&mut self, mut pointer: usize, oper_info: OperInfo<Oper>, oper_span: Span) -> Result<usize, KError<Token, Error>> {
+    fn safe_insert(&mut self, mut pointer: usize, oper_info: OperInfo<Oper>) -> Result<usize, KError<Token, Error>> {
         let pointed = &mut self.asa.get(pointer).info;
 
         // make sure that there aren't any double spaces next to each other
         if pointed.space && oper_info.space == Space::Double {
             return Err(
                 KError::DoubleSpaceConflict {
-                    span: oper_span,
+                    span: oper_info.span,
                 }
             );
         }
@@ -95,7 +104,7 @@ where
             if !pointed.space {
                 return Err(
                     KError::UnexpectedOper(
-                        oper_span
+                        oper_info.span
                     )
                 );
             }
@@ -105,7 +114,7 @@ where
             self.asa.push(Node {
                 oper: oper_info.oper,
                 info: NodeInfo {
-                    span: oper_span,
+                    span: oper_info.span,
                     parent: Some(pointer),
                     precedence: oper_info.precedence,
                     space: oper_info.space != Space::None,
@@ -117,7 +126,7 @@ where
 
             // make sure that the oper has enough space to own the pointed
             if oper_info.space == Space::None || (pointed.precedence == 0 && oper_info.space == Space::Single) { // single-spaced oper is not allowed due to the parser being left-aligned
-                return Err(KError::UnexpectedOper(oper_span));
+                return Err(KError::UnexpectedOper(oper_info.span));
             }
 
             let mut opt_parent_idx = Some(pointer);
@@ -129,7 +138,7 @@ where
                         self.asa.insert(0, Node {
                             oper: oper_info.oper,
                             info: NodeInfo {
-                                span: oper_span,
+                                span: oper_info.span,
                                 parent: None,
                                 precedence: oper_info.precedence,
                                 space: oper_info.space != Space::None,
@@ -150,7 +159,7 @@ where
                     self.asa.insert(pointer, Node {
                         oper: oper_info.oper,
                         info: NodeInfo {
-                            span: oper_span,
+                            span: oper_info.span,
                             parent: Some(parent_idx),
                             precedence: oper_info.precedence,
                             space: oper_info.space != Space::None, // `-1` space cuz it's already owning the pointed off the bat
@@ -169,13 +178,13 @@ where
     }
 
     /// Parses the **first** token/oper of the `ASA` and returns the pointer
-    fn parse_first_tok(&mut self, oper_info: OperInfo<Oper>, oper_span: Span) -> Result<usize, KError<Token, Error>> {
+    fn parse_first_tok(&mut self, oper_info: OperInfo<Oper>) -> Result<usize, KError<Token, Error>> {
         // check if the oper's space is valid at the start
         // (a double-spaced oper cannot be at the start of the ASA (due to an unfullfied input `? x _`))
         if oper_info.space == Space::Double {
             return Err(
                 KError::DoubleSpaceConflict {
-                    span: oper_span,
+                    span: oper_info.span,
                 }
             );
         }
@@ -184,7 +193,7 @@ where
         self.asa.push(Node {
             oper: oper_info.oper,
             info: NodeInfo {
-                span: oper_span,
+                span: oper_info.span,
                 parent: None,
                 precedence: oper_info.precedence,
                 space: oper_info.space != Space::None,
@@ -196,23 +205,23 @@ where
 
     pub fn parse(mut self) -> Result<ASA, KError<Token, Error>> {
         let mut pointer = {
-            let (oper_info, oper_span) = match self.parse_next_oper(false)? {
-                Some((info, span)) => (info, span),
+            let oper_info = match self.parse_next_oper(false)? {
+                Some(info) => info,
                 None => return Ok(self.asa), // there are no tokens to parse at all
             };
 
-            self.parse_first_tok(oper_info, oper_span)?
+            self.parse_first_tok(oper_info)?
         };
 
         // iterate over and parse the rest of the tokens
         loop {
             let double_space = !self.asa.get(pointer).info.space; // if the next oper should be allowed to have a double-space
-            let (oper_info, oper_span) = match self.parse_next_oper(double_space)? {
-                Some((info, span)) => (info, span),
+            let oper_info = match self.parse_next_oper(double_space)? {
+                Some(info) => info,
                 None => break,
             };
 
-            pointer = self.safe_insert(pointer, oper_info, oper_span)?;
+            pointer = self.safe_insert(pointer, oper_info)?;
         }
         
         // if a node has a missing input then throw an error

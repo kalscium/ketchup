@@ -11,6 +11,8 @@ pub type Span = std::ops::Range<usize>;
 pub struct OperInfo<Oper: std::fmt::Debug> {
     /// The internal operation
     pub oper: Oper,
+    /// Span of the operation
+    pub span: Span,
     /// The amount of inputs the operation may have
     pub space: Space,
     /// The precedence of the operation
