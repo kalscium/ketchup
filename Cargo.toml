@@ -1,11 +1,11 @@
 [package]
 name = "ketchup"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 license = "MIT OR Apache-2.0"
 description = "A parser that can *ketch-up* with your programming language."
 authors = [ "GreenChild04" ]
-readme = "../README.md"
+readme = "README.md"
 
 [lib]
 name = "ketchup"

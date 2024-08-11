@@ -1,6 +1,9 @@
+//! The ketchup parser itself
+
 use std::fmt::Debug;
 use crate::{error::KError, node::{Node, NodeInfo}, OperInfo, Space, Span};
 
+/// The ketchup parser itself
 #[derive(Debug)]
 pub struct Parser<'a, Token, Oper, Tokens, ASA, OperGen, Error>
 where

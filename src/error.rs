@@ -1,5 +1,8 @@
+//! Errors used by the ketchup parser
+
 use crate::Span;
 
+/// Errors used by the ketchup parser
 #[derive(Debug, Clone)]
 pub enum KError<Token, Other> {
     /// Occurs when there is a node with space of two that is place in way where there first input may never be fullfilled (`/1` `1 +/ 2`)

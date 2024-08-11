@@ -1,6 +1,9 @@
+//! Nodes that are stored in the **A**bstract **S**yntax **A**rray
+
 use std::fmt::Debug;
 use crate::Span;
 
+/// Nodes that are stored in the **A**bstract **S**yntax **A**rray
 #[derive(Debug, Clone)]
 pub struct Node<Oper: Debug> {
     /// The type of operation that the node is
