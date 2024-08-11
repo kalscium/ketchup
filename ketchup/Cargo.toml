@@ -12,5 +12,4 @@ name = "ketchup"
 path = "src/lib.rs"
 
 [dependencies]
-logos = "0.14.0"
 # ketchup-derive = { path = "../ketchup-derive" }
