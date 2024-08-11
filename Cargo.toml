@@ -1,11 +1,14 @@
 [package]
 name = "ketchup"
-version = "0.1.1"
+version = "0.1.2"
 edition = "2021"
 license = "MIT OR Apache-2.0"
 description = "A parser that can *ketch-up* with your programming language."
-authors = [ "GreenChild04" ]
+authors = [ "kalscium <kalscium@protonmail.com>" ]
 readme = "README.md"
+repository = "https://github.com/kalscium/ketchup"
+categories = [ "parsing", "text-processing" ]
+keywords = [ "parser", "syntax", "token", "language", "parsing" ]
 
 [lib]
 name = "ketchup"

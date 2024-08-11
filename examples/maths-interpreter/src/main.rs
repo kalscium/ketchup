@@ -9,6 +9,7 @@ pub enum Error {
     EmptyBraces,
 }
 
+/// A simple logos lexer
 #[derive(Debug, Clone, Logos, PartialEq)]
 #[logos(error = Error)]
 #[logos(skip r"[ \t\r\n\f]+")]
@@ -29,6 +30,7 @@ pub enum Token {
     RParen,
 }
 
+/// The operations / nodes that will be used
 #[derive(Debug, Clone)]
 pub enum Oper {
     Num(f64),
@@ -41,6 +43,7 @@ pub enum Oper {
     Scope(Vec<Node<Oper>>),
 }
 
+/// Traverses the ASA
 fn visit_node(idx: usize, asa: &Vec<Node<Oper>>) -> (usize, f64) {
     let oper = &asa[idx].oper;
 
@@ -89,6 +92,9 @@ fn oper_generator(token: Token, tokens: &mut SpannedIter<'_, Token>, double_spac
     use Token as T;
     use Oper as O;
 
+    // precedence determines the order of operations, lower the precedence the 'smaller' it is
+    // space determines how much many input nodes it takes, eg `Space::None` is `x`, `Space::Single` is `x input`, `Space::Double` is `input1 x input2`
+    // oper is just the kind of operation it is, like a number, addition, etc
     let (precedence, space, oper) = match (token, double_space) {
         // no space
         (T::Number(x), _) => (0, Space::None, O::Num(x)),

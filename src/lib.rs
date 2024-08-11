@@ -31,6 +31,9 @@
 //!     use Token as T;
 //!     use Oper as O;
 //! 
+//!     // precedence determines the order of operations, lower the precedence the 'smaller' it is
+//!     // space determines how much many input nodes it takes, eg `Space::None` is `x`, `Space::Single` is `x input`, `Space::Double` is `input1 x input2`
+//!     // oper is just the kind of operation it is, like a number, addition, etc
 //!     let (precedence, space, oper) = match (token, double_space) {
 //!         (T::Number(x), _) => (0, Space::None, O::Num(x)),
 //!         (T::Plus, _) => (3, Space::Double, O::Add), // larger precedence changes the order of operations
