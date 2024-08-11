@@ -1,3 +1,4 @@
+use ariadne::{Color, Label, Report, ReportKind, Source};
 use ketchup::{node::Node, parser::Parser, OperInfo, Space};
 use logos::{Logos, SpannedIter};
 
@@ -84,7 +85,7 @@ fn visit_node(idx: usize, asa: &Vec<Node<Oper>>) -> (usize, f64) {
     }
 }
 
-fn oper_generator(token: Token, tokens: &mut SpannedIter<'_, Token>, double_space: bool) -> OperInfo<Oper> {
+fn oper_generator(token: Token, _tokens: &mut SpannedIter<'_, Token>, double_space: bool) -> OperInfo<Oper> {
     use Token as T;
     use Oper as O;
 
@@ -113,16 +114,38 @@ fn oper_generator(token: Token, tokens: &mut SpannedIter<'_, Token>, double_spac
 }
 
 fn main() {
-    const SRC: &str = "1- + 2 * 2";
+    // source to parse
+    const SRC: &str = "1 + 45 - 2 * 3";
 
     let mut lexer = Token::lexer(SRC).spanned();
     let parser = Parser::<'_, Token, Oper, _, Vec<Node<Oper>>, _, Error>::new(&mut lexer, None, oper_generator);
 
-    let asa = parser.parse().unwrap();
+    // handle errors
+    let asa = match parser.parse() {
+        Ok(asa) => asa,
+        Err(err) => {
+            Report::build(ReportKind::Error, "sample.foo", 12)
+                .with_message(format!("{err:?}"))
+                .with_label(
+                    Label::new(("sample.foo", err.span().clone()))
+                        .with_message("occured here")
+                        .with_color(Color::Red)
+                )
+                .with_note("errors will look a bit funny cuz i'm too lazy to put in custom messages")
+                .finish()
+                .eprint(("sample.foo", Source::from(SRC)))
+                .unwrap();
+            panic!("an error occured");
+        },
+    };
+
+    // print abstract syntax array
     println!("{asa:?}");
 
+    // don't visit the ASA if it's empty
     if asa.is_empty() { return };
 
-    let out = visit_node(0, &asa);
+    // visit / interpret the ASA
+    let out = visit_node(0, &asa).1;
     println!("result: {out:?}");
 }

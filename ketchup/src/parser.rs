@@ -220,7 +220,7 @@ where
         if pointed.space {
             return Err(
                 KError::ExpectedOper {
-                    span: (pointed.span.end + 1)..(pointed.span.end + 2), // replace with the actual span of the EOF
+                    span: pointed.span.end..pointed.span.end, // replace with the actual span of the EOF
                     precedence: pointed.precedence,
                 }
             );
@@ -231,7 +231,7 @@ where
             Some(parent) if parent.info.space => {
                 return Err(
                     KError::ExpectedOper {
-                        span: (parent.info.span.end + 1)..(parent.info.span.end + 2), // replace with the actual span of the EOF
+                        span: parent.info.span.end..parent.info.span.end, // replace with the actual span of the EOF
                         precedence: parent.info.precedence,
                     }
                 )

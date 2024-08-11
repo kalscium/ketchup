@@ -25,3 +25,17 @@ pub enum KError<Token, Other> {
     /// Custom errors outside of ketchup
     Other(Span, Other),
 }
+
+impl<Token, Other> KError<Token, Other> {
+    #[inline]
+    pub fn span(&self) -> &Span {
+        use KError as K;
+        match self {
+            K::DoubleSpaceConflict { span } => span,
+            K::UnexpectedOper(span) => span,
+            K::ExpectedOper { span, .. } => span,
+            K::ExpectedEOF(_) => &(0..1),
+            K::Other(span, _) => span,
+        }
+    }
+}

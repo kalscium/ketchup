@@ -6,3 +6,4 @@ edition = "2021"
 [dependencies]
 ketchup = { path = "../.." }
 logos = "0.14"
+ariadne = "0.4"
