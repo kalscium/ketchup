@@ -13,3 +13,8 @@ path = "src/lib.rs"
 
 [dependencies]
 # ketchup-derive = { path = "../ketchup-derive" }
+
+[workspace]
+members = [
+  "examples/*"
+]

@@ -7,7 +7,8 @@ pub mod parser;
 pub type Span = std::ops::Range<usize>;
 
 /// Information about an operation (future node)
-pub struct OperInfo<Oper> {
+#[derive(Debug)]
+pub struct OperInfo<Oper: std::fmt::Debug> {
     /// The internal operation
     pub oper: Oper,
     /// The amount of inputs the operation may have

@@ -1,8 +1,0 @@
-[workspace]
-members = [
-  "ketchup",
-  "ketchup-derive",
-  "ketchup-codegen",
-]
-
-resolver = "2"

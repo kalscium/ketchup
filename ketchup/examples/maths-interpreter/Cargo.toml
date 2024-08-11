@@ -1,0 +1,8 @@
+[package]
+name = "maths-interpreter"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+ketchup = { path = "../.." }
+logos = "0.14"

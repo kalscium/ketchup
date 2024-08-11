@@ -45,6 +45,7 @@ where
     }
 
     /// Returns the current oper information
+    #[allow(clippy::type_complexity)]
     fn parse_next_oper(&mut self, double_space: bool) -> Result<Option<(OperInfo<Oper>, Span)>, KError<Token, Error>> {
         let (token, span) = match self.tokens.next() {
             Some((token, span)) => (token, span),
@@ -67,7 +68,7 @@ where
             return Ok(None);
         }
 
-        let oper_info = (self.oper_gen)(token, &mut self.tokens, double_space);
+        let oper_info = (self.oper_gen)(token, self.tokens, double_space);
         Ok(Some((oper_info, span)))
     }
 
@@ -110,11 +111,12 @@ where
                     space: oper_info.space != Space::None,
                 },
             });
+            pointer = self.asa.len()-1;
         } else {
             // take owernership of the pointed recursively
 
             // make sure that the oper has enough space to own the pointed
-            if oper_info.space != Space::Double { // single-spaced oper is not allowed due to the parser being left-aligned
+            if oper_info.space == Space::None || (pointed.precedence == 0 && oper_info.space == Space::Single) { // single-spaced oper is not allowed due to the parser being left-aligned
                 return Err(KError::UnexpectedOper(oper_span));
             }
 
@@ -218,7 +220,7 @@ where
         if pointed.space {
             return Err(
                 KError::ExpectedOper {
-                    span: (pointed.span.end + 2)..(pointed.span.end + 3), // replace with the actual span of the EOF
+                    span: (pointed.span.end + 1)..(pointed.span.end + 2), // replace with the actual span of the EOF
                     precedence: pointed.precedence,
                 }
             );
@@ -229,7 +231,7 @@ where
             Some(parent) if parent.info.space => {
                 return Err(
                     KError::ExpectedOper {
-                        span: (parent.info.span.end + 2)..(parent.info.span.end + 3), // replace with the actual span of the EOF
+                        span: (parent.info.span.end + 1)..(parent.info.span.end + 2), // replace with the actual span of the EOF
                         precedence: parent.info.precedence,
                     }
                 )
