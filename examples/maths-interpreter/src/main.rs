@@ -165,7 +165,7 @@ fn throw(src: &str, error: KError<Token, Error>) {
 
 fn main() {
     // source to parse
-    const SRC: &str = "(1 + 2) + )((1 * 4)) / 2";
+    const SRC: &str = "(1 + 2) + ((1 * 4)) / 2";
 
     let mut lexer = Token::lexer(SRC).spanned();
     let parser = Parser::<'_, Token, Oper, _, Vec<Node<Oper>>, _, Error>::new(&mut lexer, oper_generator);

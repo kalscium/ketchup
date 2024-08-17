@@ -8,11 +8,16 @@
 ```rust
 use ketchup::{error::KError, node::Node, parser::Parser, OperInfo, Space, Span};
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub enum Error {
-    CustomError,
+    #[default]
+    UnexpectedCharacter,
+    EmptyParentheses,
+    UnclosedParentheses,
+    UnexpectedToken,
 }
 
+/// A simple logos lexer
 #[derive(Debug, Clone, PartialEq)]
 pub enum Token {
     Number(u32),
@@ -22,6 +27,7 @@ pub enum Token {
     Slash,
 }
 
+/// The operations / nodes that will be used
 #[derive(Debug, Clone)]
 pub enum Oper {
     Num(u32),
@@ -29,9 +35,11 @@ pub enum Oper {
     Sub,
     Mul,
     Div,
+    Neg,
+    Pos,
 }
 
-fn oper_generator(token: Token, tokens: &mut impl Iterator<Item = (Result<Token, Error>, Span)>, double_space: bool) -> Result<OperInfo<Oper>, Vec<KError<Token, Error>>> {
+fn oper_generator(token: Token, tokens: &mut impl Iterator<Item = (Result<Token, Error>, Span)>, double_space: bool) -> Result<Option<(OperInfo<Oper>, Option<(Result<Token, Error>, Span)>)>, Vec<KError<Token, Error>>> {
     use Token as T;
     use Oper as O;
 
@@ -39,30 +47,51 @@ fn oper_generator(token: Token, tokens: &mut impl Iterator<Item = (Result<Token,
     // space determines how much many input nodes it takes, eg `Space::None` is `x`, `Space::Single` is `x input`, `Space::Double` is `input1 x input2`
     // oper is just the kind of operation it is, like a number, addition, etc
     let (precedence, space, oper) = match (token, double_space) {
+        // no space
         (T::Number(x), _) => (0, Space::None, O::Num(x)),
-        (T::Plus, _) => (3, Space::Double, O::Add), // larger precedence changes the order of operations
-        (T::Minus, _) => (3, Space::Double, O::Sub),
+
+        // single space
+        (T::Plus, false) => (1, Space::Single, O::Pos),
+        (T::Minus, false) => (1, Space::Single, O::Neg),
+
+        // double space
+        (T::Plus, true) => (3, Space::Double, O::Add),
+        (T::Minus, true) => (3, Space::Double, O::Sub),
         (T::Star, _) => (2, Space::Double, O::Mul),
         (T::Slash, _) => (2, Space::Double, O::Div),
     };
 
-    Ok(OperInfo {
+    Ok(Some((OperInfo {
         oper,
-        span: 0..0, // placeholder for logos `.span()`
+        span: 0..0, // should be used with logos to get the actual span
         space,
         precedence,
-    })
+    }, tokens.next())))
+}
+
+fn throw(error: KError<Token, Error>) {
+    println!("err: {error:?}");
 }
 
 fn main() {
-    // source to parse
-    let mut src = [(Ok(Token::Number(1)), 0..1)].into_iter();
+    let mut tokens = [(Ok(Token::Number(1)), 0..1), (Ok(Token::Plus), 1..2), (Ok(Token::Number(2)), 2..3), (Ok(Token::Star), 3..4), (Ok(Token::Number(3)), 4..5)].into_iter();
+    let parser = Parser::<'_, Token, Oper, _, Vec<Node<Oper>>, _, Error>::new(&mut tokens, oper_generator);
 
-    // initialise parser
-    let parser = Parser::<'_, Token, Oper, _, Vec<Node<Oper>>, _, Error>::new(&mut src, None, oper_generator);
+    // handle errors
+    let (asa, trailing_tok) = match parser.parse() {
+        Ok(asa) => asa,
+        Err(errs) => {
+            for err in errs {
+                throw(err);
+            } panic!("an error occured");
+        },
+    };
 
-    // parse and handle errors
-    let asa = parser.parse().unwrap();
+    // make sure that there aren't any tokens that haven't been consumed
+    if let Some((_, span)) = trailing_tok {
+        throw(KError::Other(span, Error::UnexpectedToken));
+        panic!("an error occured");
+    }
 
     // print abstract syntax array
     println!("{asa:?}");
