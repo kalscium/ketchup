@@ -1,12 +1,14 @@
 use ariadne::{Color, Label, Report, ReportKind, Source};
-use ketchup::{error::KError, node::Node, parser::Parser, OperInfo, Space};
+use ketchup::{error::KError, node::Node, parser::Parser, OperInfo, Space, Span};
 use logos::{Logos, SpannedIter};
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub enum Error {
     #[default]
     UnexpectedCharacter,
-    EmptyBraces,
+    EmptyParentheses,
+    UnclosedParentheses,
+    UnexpectedToken,
 }
 
 /// A simple logos lexer
@@ -88,7 +90,7 @@ fn visit_node(idx: usize, asa: &Vec<Node<Oper>>) -> (usize, f64) {
     }
 }
 
-fn oper_generator(token: Token, tokens: &mut SpannedIter<'_, Token>, double_space: bool) -> Result<OperInfo<Oper>, Vec<KError<Token, Error>>> {
+fn oper_generator(token: Token, tokens: &mut SpannedIter<'_, Token>, double_space: bool) -> Result<Option<(OperInfo<Oper>, Option<(Result<Token, Error>, Span)>)>, Vec<KError<Token, Error>>> {
     use Token as T;
     use Oper as O;
 
@@ -110,62 +112,79 @@ fn oper_generator(token: Token, tokens: &mut SpannedIter<'_, Token>, double_spac
         (T::Slash, _) => (2, Space::Double, O::Div),
         
         // parentheses
-        (T::RParen, _) => return Err(vec![KError::UnexpectedOper(tokens.span())]),
+        (T::RParen, _) => return Ok(None),
         (T::LParen, _) => {
             let start_span = tokens.span();
             
-            let asa = Parser::<'_, Token, Oper, _, Vec<Node<Oper>>, _, Error>::new(tokens, Some(Token::RParen), oper_generator).parse()?;
+            let (asa, next_tok) = Parser::<'_, Token, Oper, _, Vec<Node<Oper>>, _, Error>::new(tokens, oper_generator).parse()?;
+
+            // make sure that there is a closing `)` parenthesis
+            match next_tok {
+                Some((Token::RParen, _)) => (),
+                _ => return Err(vec![KError::Other(
+                    tokens.span(),
+                    Error::UnclosedParentheses,
+                )]),
+            }
 
             // make sure the parentheses aren't empty
             if asa.is_empty() {
-                return Err(vec![KError::Other(tokens.span(), Error::EmptyBraces)]);
+                return Err(vec![KError::Other(tokens.span(), Error::EmptyParentheses)]);
             }
             
-            return Ok(OperInfo {
+            return Ok(Some((OperInfo {
                 oper: O::Scope(asa),
                 span: start_span.start..tokens.span().end,
                 space: Space::None,
                 precedence: 0,
-            });
+            }, tokens.next())));
         },
     };
 
-    Ok(OperInfo {
+    Ok(Some((OperInfo {
         oper,
         span: tokens.span(),
         space,
         precedence,
-    })
+    }, tokens.next())))
+}
+
+fn throw(src: &str, error: KError<Token, Error>) {
+    Report::build(ReportKind::Error, "sample.foo", 12)
+        .with_message(format!("{error:?}"))
+        .with_label(
+            Label::new(("sample.foo", error.span().clone()))
+                .with_message("occured here")
+                .with_color(Color::Red)
+        )
+        .with_note("errors will look a bit funny cuz i'm too lazy to put in custom messages")
+        .finish()
+        .eprint(("sample.foo", Source::from(src)))
+        .unwrap();
 }
 
 fn main() {
     // source to parse
-    const SRC: &str = "(1 + 2) + ((1 * 4)) / 2";
+    const SRC: &str = "(1 + 2) + )((1 * 4)) / 2";
 
     let mut lexer = Token::lexer(SRC).spanned();
-    let parser = Parser::<'_, Token, Oper, _, Vec<Node<Oper>>, _, Error>::new(&mut lexer, None, oper_generator);
+    let parser = Parser::<'_, Token, Oper, _, Vec<Node<Oper>>, _, Error>::new(&mut lexer, oper_generator);
 
     // handle errors
-    let asa = match parser.parse() {
+    let (asa, trailing_tok) = match parser.parse() {
         Ok(asa) => asa,
         Err(errs) => {
             for err in errs {
-                Report::build(ReportKind::Error, "sample.foo", 12)
-                    .with_message(format!("{err:?}"))
-                    .with_label(
-                        Label::new(("sample.foo", err.span().clone()))
-                            .with_message("occured here")
-                            .with_color(Color::Red)
-                    )
-                    .with_note("errors will look a bit funny cuz i'm too lazy to put in custom messages")
-                    .finish()
-                    .eprint(("sample.foo", Source::from(SRC)))
-                    .unwrap();
-            }
-
-            panic!("an error occured");
+                throw(SRC, err);
+            } panic!("an error occured");
         },
     };
+
+    // make sure that there aren't any tokens that haven't been consumed
+    if let Some((_, span)) = trailing_tok {
+        throw(SRC, KError::Other(span, Error::UnexpectedToken));
+        panic!("an error occured");
+    }
 
     // print abstract syntax array
     println!("{asa:?}");

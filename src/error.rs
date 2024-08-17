@@ -1,10 +1,11 @@
 //! Errors used by the ketchup parser
 
 use crate::Span;
+use std::fmt::Debug;
 
 /// Errors used by the ketchup parser
 #[derive(Debug, Clone)]
-pub enum KError<Token, Other> {
+pub enum KError<Token: Debug + Clone, Other: Debug + Clone> {
     /// Occurs when there is a node with space of two that is place in way where there first input may never be fullfilled (`/1` `1 +/ 2`)
     DoubleSpaceConflict {
         /// Span of where a node with zero space was expected (input)
@@ -34,7 +35,7 @@ pub enum KError<Token, Other> {
     Other(Span, Other),
 }
 
-impl<Token, Other> KError<Token, Other> {
+impl<Token: Debug + Clone, Other: Debug + Clone> KError<Token, Other> {
     #[inline]
     pub fn span(&self) -> &Span {
         use KError as K;

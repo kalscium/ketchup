@@ -7,41 +7,37 @@ use crate::{error::KError, node::{Node, NodeInfo}, OperInfo, Space, Span};
 #[derive(Debug)]
 pub struct Parser<'a, Token, Oper, Tokens, ASA, OperGen, Error>
 where
-    Token: PartialEq,
+    Token: PartialEq + Debug + Clone,
     Oper: Debug,
-    Error: Debug,
+    Error: Debug + Clone,
     Tokens: Iterator<Item = (Result<Token, Error>, Span)>,
     ASA: crate::asa::ASA<Oper = Oper>,
-    OperGen: Fn(Token, &mut Tokens, bool) -> Result<OperInfo<Oper>, Vec<KError<Token, Error>>>,
+    OperGen: Fn(Token, &mut Tokens, bool) -> Result<Option<(OperInfo<Oper>, Option<(Result<Token, Error>, Span)>)>, Vec<KError<Token, Error>>>,
 {
     /// A function that generates an operation from a token-iterator,
-    /// *(effectively a mini context-less parser)*
-    ///
+    /// *(effectively a mini context-less parser)* ///
     /// The three parameters to the function are the current token, a mutable reference to the token-iterator, and a boolean of if the oper is allowed to be double-spaced (`_ x _`) or not
     oper_gen: OperGen,
     /// The iterator that provides the tokens for the parser
     tokens: &'a mut Tokens,
-    /// A token that caps off the iterator (and gets ignored, eg `)`)
-    eof: Option<Token>,
     /// The internal `ASA`
     asa: ASA,
 }
 
 impl<'a, Token, Oper, Tokens, ASA, OperGen, Error> Parser<'a, Token, Oper, Tokens, ASA, OperGen, Error>
 where
-    Token: PartialEq,
+    Token: PartialEq + Debug + Clone,
     Oper: Debug,
-    Error: Debug,
+    Error: Debug + Clone,
     Tokens: Iterator<Item = (Result<Token, Error>, Span)>,
     ASA: crate::asa::ASA<Oper = Oper>,
-    OperGen: Fn(Token, &mut Tokens, bool) -> Result<OperInfo<Oper>, Vec<KError<Token, Error>>>,
+    OperGen: Fn(Token, &mut Tokens, bool) -> Result<Option<(OperInfo<Oper>, Option<(Result<Token, Error>, Span)>)>, Vec<KError<Token, Error>>>,
 {
     /// Initialises a new parser with the provided token iterator, optional EOF token, and operation generator
     #[inline]
-    pub fn new(tokens: &'a mut Tokens, eof: Option<Token>, oper_gen: OperGen) -> Self {
+    pub fn new(tokens: &'a mut Tokens, oper_gen: OperGen) -> Self {
         Self {
             tokens,
-            eof,
             oper_gen,
             asa: ASA::default(),
         }
@@ -49,41 +45,20 @@ where
 
     /// Returns the current oper information
     #[allow(clippy::type_complexity)]
-    fn parse_next_oper(&mut self, double_space: bool) -> Result<Option<OperInfo<Oper>>, Vec<KError<Token, Error>>> {
-        let (token, span) = match self.tokens.next() {
-            Some((token, span)) => (token, span),
-            // if there are no more tokens left in the iterator
-            None => {
-                // if the asa is empty and there is no more tokens, then the token iterator must be empty aswell and therefore this must shortcircuit to prevent subtraction overflow errors
-                if self.asa.is_empty() {
-                    return Ok(None);
-                }
-                
-                // throw error if eof has not been reached
-                // also make sure there is an eof to expect in the first place
-                return if let Some(eof) = self.eof.take() {
-                    let span = self.asa.get(self.asa.len()-1).info.span.end;
-                    Err(vec![
-                        KError::ExpectedEOF {
-                            eof,
-                            span: span..span,
-                        }
-                    ])
-                } else {
-                    Ok(None)
-                };
-            },
+    fn parse_next_oper(&mut self, token: Option<(Result<Token, Error>, Span)>, double_space: bool) -> Result<Option<(OperInfo<Oper>, Option<(Result<Token, Error>, Span)>)>, Vec<KError<Token, Error>>> {
+        // if there is no next token return None
+        let (token, span) = match token {
+            Some((tok, span)) => (tok, span),
+            None => return Ok(None),
         };
 
         let token = token.map_err(|e| KError::Other(span.clone(), e)).map_err(|e| vec![e])?; // lexer may throw errors
 
-        // check for lexer eof
-        if Some(&token) == self.eof.as_ref() {
-            return Ok(None);
-        }
-
         let oper_info = (self.oper_gen)(token, self.tokens, double_space)?;
-        Ok(Some(oper_info))
+        match oper_info {
+            Some((oper_info, tok_w_span)) => Ok(Some((oper_info, tok_w_span))),
+            None => Ok(None),
+        }
     }
 
     /// Safely inserts an oper into the `ASA` while following `ketchup`'s rules
@@ -208,25 +183,30 @@ where
         Ok(0) // first node is the pointer
     }
 
-    pub fn parse(mut self) -> Result<ASA, Vec<KError<Token, Error>>> {
-        let mut pointer = {
-            let oper_info = match self.parse_next_oper(false)? {
+    pub fn parse(mut self) -> Result<(ASA, Option<(Token, Span)>), Vec<KError<Token, Error>>> {
+        let (mut pointer, mut next_tok) = {
+            let next = self.tokens.next();
+            let (oper_info, next_tok) = match self.parse_next_oper(next.clone(), false)? {
                 Some(info) => info,
-                None => return Ok(self.asa), // there are no tokens to parse at all
+                None => return Ok((self.asa, next.map(|(tok, span)| (tok.unwrap(), span)))), // there are no tokens to parse at all (lexer errors should've been handled previously in the `parse_next_oper` func call)
             };
 
-            self.parse_first_tok(oper_info).map_err(|e| vec![e])?
+            (
+                self.parse_first_tok(oper_info).map_err(|e| vec![e])?,
+                next_tok,
+            )
         };
 
         // iterate over and parse the rest of the tokens
         loop {
             let double_space = !self.asa.get(pointer).info.space; // if the next oper should be allowed to have a double-space
-            let oper_info = match self.parse_next_oper(double_space)? {
-                Some(info) => info,
+            let (oper_info, next_tok_local) = match self.parse_next_oper(next_tok.clone(), double_space)? {
+                Some((info, tok)) => (info, tok),
                 None => break,
             };
+            next_tok = next_tok_local;
 
-            pointer = self.safe_insert(pointer, oper_info).map_err(|e| vec![e])?;
+            pointer = self.safe_insert(pointer, oper_info).map_err(|err| vec![err])?;
         }
         
         // if a node has a missing input then throw an error
@@ -254,6 +234,6 @@ where
         }
 
         // return the completed **valid** ASA
-        Ok(self.asa)
+        Ok((self.asa, next_tok.map(|(tok, span)| (tok.unwrap(), span)))) // error would've been handled already
     }
 }
