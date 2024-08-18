@@ -183,12 +183,11 @@ where
         Ok(0) // first node is the pointer
     }
 
-    pub fn parse(mut self) -> Result<(ASA, Option<(Token, Span)>), Vec<KError<Token, Error>>> {
+    pub fn parse(mut self, first_tok: Option<(Result<Token, Error>, Span)>) -> Result<(ASA, Option<(Token, Span)>), Vec<KError<Token, Error>>> {
         let (mut pointer, mut next_tok) = {
-            let next = self.tokens.next();
-            let (oper_info, next_tok) = match self.parse_next_oper(next.clone(), false)? {
+            let (oper_info, next_tok) = match self.parse_next_oper(first_tok.clone(), false)? {
                 Some(info) => info,
-                None => return Ok((self.asa, next.map(|(tok, span)| (tok.unwrap(), span)))), // there are no tokens to parse at all (lexer errors should've been handled previously in the `parse_next_oper` func call)
+                None => return Ok((self.asa, first_tok.map(|(tok, span)| (tok.unwrap(), span)))), // there are no tokens to parse at all (lexer errors should've been handled previously in the `parse_next_oper` func call)
             };
 
             (

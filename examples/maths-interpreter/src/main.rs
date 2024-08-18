@@ -116,7 +116,8 @@ fn oper_generator(token: Token, tokens: &mut SpannedIter<'_, Token>, double_spac
         (T::LParen, _) => {
             let start_span = tokens.span();
             
-            let (asa, next_tok) = Parser::<'_, Token, Oper, _, Vec<Node<Oper>>, _, Error>::new(tokens, oper_generator).parse()?;
+            let next_tok = tokens.next();
+            let (asa, next_tok) = Parser::<'_, Token, Oper, _, Vec<Node<Oper>>, _, Error>::new(tokens, oper_generator).parse(next_tok)?;
 
             // make sure that there is a closing `)` parenthesis
             match next_tok {
@@ -168,10 +169,11 @@ fn main() {
     const SRC: &str = "(1 + 2) + ((1 * 4)) / 2";
 
     let mut lexer = Token::lexer(SRC).spanned();
+    let first_tok = lexer.next();
     let parser = Parser::<'_, Token, Oper, _, Vec<Node<Oper>>, _, Error>::new(&mut lexer, oper_generator);
 
     // handle errors
-    let (asa, trailing_tok) = match parser.parse() {
+    let (asa, trailing_tok) = match parser.parse(first_tok) {
         Ok(asa) => asa,
         Err(errs) => {
             for err in errs {

@@ -71,10 +71,11 @@
 //! 
 //! fn main() {
 //!     let mut tokens = [(Ok(Token::Number(1)), 0..1), (Ok(Token::Plus), 1..2), (Ok(Token::Number(2)), 2..3), (Ok(Token::Star), 3..4), (Ok(Token::Number(3)), 4..5)].into_iter();
+//!     let mut first_tok = tokens.next();
 //!     let parser = Parser::<'_, Token, Oper, _, Vec<Node<Oper>>, _, Error>::new(&mut tokens, oper_generator);
 //! 
 //!     // handle errors
-//!     let (asa, trailing_tok) = match parser.parse() {
+//!     let (asa, trailing_tok) = match parser.parse(first_tok) {
 //!         Ok(asa) => asa,
 //!         Err(errs) => {
 //!             for err in errs {
