@@ -12,7 +12,7 @@ where
     Error: Debug + Clone,
     Tokens: Iterator<Item = (Result<Token, Error>, Span)>,
     ASA: crate::asa::ASA<Oper = Oper>,
-    OperGen: Fn(Token, &mut Tokens, bool) -> Result<Option<(OperInfo<Oper>, Option<(Result<Token, Error>, Span)>)>, Vec<KError<Token, Error>>>,
+    OperGen: Fn(Token, &mut Tokens, bool) -> Result<Option<(OperInfo<Oper>, Option<(Result<Token, Error>, Span)>)>, Vec<KError<Error>>>,
 {
     /// A function that generates an operation from a token-iterator,
     /// *(effectively a mini context-less parser)* ///
@@ -31,7 +31,7 @@ where
     Error: Debug + Clone,
     Tokens: Iterator<Item = (Result<Token, Error>, Span)>,
     ASA: crate::asa::ASA<Oper = Oper>,
-    OperGen: Fn(Token, &mut Tokens, bool) -> Result<Option<(OperInfo<Oper>, Option<(Result<Token, Error>, Span)>)>, Vec<KError<Token, Error>>>,
+    OperGen: Fn(Token, &mut Tokens, bool) -> Result<Option<(OperInfo<Oper>, Option<(Result<Token, Error>, Span)>)>, Vec<KError<Error>>>,
 {
     /// Initialises a new parser with the provided token iterator, optional EOF token, and operation generator
     #[inline]
@@ -45,7 +45,7 @@ where
 
     /// Returns the current oper information
     #[allow(clippy::type_complexity)]
-    fn parse_next_oper(&mut self, token: Option<(Result<Token, Error>, Span)>, double_space: bool) -> Result<Option<(OperInfo<Oper>, Option<(Result<Token, Error>, Span)>)>, Vec<KError<Token, Error>>> {
+    fn parse_next_oper(&mut self, token: Option<(Result<Token, Error>, Span)>, double_space: bool) -> Result<Option<(OperInfo<Oper>, Option<(Result<Token, Error>, Span)>)>, Vec<KError<Error>>> {
         // if there is no next token return None
         let (token, span) = match token {
             Some((tok, span)) => (tok, span),
@@ -64,7 +64,7 @@ where
     /// Safely inserts an oper into the `ASA` while following `ketchup`'s rules
     ///
     /// Also returns the current pointer
-    fn safe_insert(&mut self, mut pointer: usize, oper_info: OperInfo<Oper>) -> Result<usize, KError<Token, Error>> {
+    fn safe_insert(&mut self, mut pointer: usize, oper_info: OperInfo<Oper>) -> Result<usize, KError<Error>> {
         let pointed = &mut self.asa.get(pointer).info;
 
         // make sure that there aren't any double spaces next to each other
@@ -158,7 +158,7 @@ where
     }
 
     /// Parses the **first** token/oper of the `ASA` and returns the pointer
-    fn parse_first_tok(&mut self, oper_info: OperInfo<Oper>) -> Result<usize, KError<Token, Error>> {
+    fn parse_first_tok(&mut self, oper_info: OperInfo<Oper>) -> Result<usize, KError<Error>> {
         // check if the oper's space is valid at the start
         // (a double-spaced oper cannot be at the start of the ASA (due to an unfullfied input `? x _`))
         if oper_info.space == Space::Double {
@@ -183,7 +183,7 @@ where
         Ok(0) // first node is the pointer
     }
 
-    pub fn parse(mut self, first_tok: Option<(Result<Token, Error>, Span)>) -> Result<(ASA, Option<(Token, Span)>), Vec<KError<Token, Error>>> {
+    pub fn parse(mut self, first_tok: Option<(Result<Token, Error>, Span)>) -> Result<(ASA, Option<(Token, Span)>), Vec<KError<Error>>> {
         let (mut pointer, mut next_tok) = {
             let (oper_info, next_tok) = match self.parse_next_oper(first_tok.clone(), false)? {
                 Some(info) => info,
