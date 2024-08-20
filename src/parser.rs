@@ -71,6 +71,7 @@ where
         if pointed.space && oper_info.space == Space::Double {
             return Err(
                 KError::DoubleSpaceConflict {
+                    ctx_span: pointed.span.clone(),
                     span: oper_info.span,
                 }
             );
@@ -83,9 +84,10 @@ where
             // check if there is enough space for another node input
             if !pointed.space {
                 return Err(
-                    KError::UnexpectedOper(
-                        oper_info.span
-                    )
+                    KError::UnexpectedOper {
+                        ctx_span: pointed.span.clone(),
+                        span: oper_info.span
+                    }
                 );
             }
 
@@ -106,7 +108,12 @@ where
 
             // make sure that the oper has enough space to own the pointed
             if oper_info.space == Space::None || (pointed.precedence == 0 && oper_info.space == Space::Single) { // single-spaced oper is not allowed due to the parser being left-aligned
-                return Err(KError::UnexpectedOper(oper_info.span));
+                return Err(
+                    KError::UnexpectedOper {
+                        ctx_span: pointed.span.clone(),
+                        span: oper_info.span,
+                    }
+                );
             }
 
             let mut opt_parent_idx = Some(pointer);
@@ -164,7 +171,8 @@ where
         if oper_info.space == Space::Double {
             return Err(
                 KError::DoubleSpaceConflict {
-                    span: oper_info.span,
+                    ctx_span: oper_info.span.start..oper_info.span.start,
+                    span: oper_info.span.clone(),
                 }
             );
         }
@@ -213,7 +221,8 @@ where
         if pointed.space {
             return Err(vec![
                 KError::ExpectedOper {
-                    span: pointed.span.end..pointed.span.end, // replace with the actual span of the EOF
+                    ctx_span: pointed.span.clone(),
+                    span: pointed.span.end..pointed.span.end,
                     precedence: pointed.precedence,
                 }
             ]);
@@ -224,7 +233,8 @@ where
             Some(parent) if parent.info.space => {
                 return Err(vec![
                     KError::ExpectedOper {
-                        span: parent.info.span.end..parent.info.span.end, // replace with the actual span of the EOF
+                        ctx_span: parent.info.span.clone(),
+                        span: parent.info.span.end..parent.info.span.end,
                         precedence: parent.info.precedence,
                     }
                 ])
