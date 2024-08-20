@@ -35,7 +35,7 @@
 //!     Pos,
 //! }
 //! 
-//! fn oper_generator(token: Token, tokens: &mut impl Iterator<Item = (Result<Token, Error>, Span)>, double_space: bool) -> Result<Option<(OperInfo<Oper>, Option<(Result<Token, Error>, Span)>)>, Vec<KError<Token, Error>>> {
+//! fn oper_generator(token: Token, tokens: &mut impl Iterator<Item = (Result<Token, Error>, Span)>, double_space: bool) -> Result<Option<(OperInfo<Oper>, Option<(Result<Token, Error>, Span)>)>, Vec<KError<Error>>> {
 //!     use Token as T;
 //!     use Oper as O;
 //! 
@@ -65,13 +65,13 @@
 //!     }, tokens.next())))
 //! }
 //! 
-//! fn throw(error: KError<Token, Error>) {
+//! fn throw(error: KError<Error>) {
 //!     println!("err: {error:?}");
 //! }
 //! 
 //! fn main() {
 //!     let mut tokens = [(Ok(Token::Number(1)), 0..1), (Ok(Token::Plus), 1..2), (Ok(Token::Number(2)), 2..3), (Ok(Token::Star), 3..4), (Ok(Token::Number(3)), 4..5)].into_iter();
-//!     let mut first_tok = tokens.next();
+//!     let first_tok = tokens.next();
 //!     let parser = Parser::<'_, Token, Oper, _, Vec<Node<Oper>>, _, Error>::new(&mut tokens, oper_generator);
 //! 
 //!     // handle errors

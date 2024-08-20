@@ -1,11 +1,3 @@
-# ketchup
----
-> A parser that can *ketch - up* with your programming language.
-
-## Example
----
-*for a full implementation/example check the `examples` directory*
-```rust
 use ketchup::{error::KError, node::Node, parser::Parser, OperInfo, Space, Span};
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -97,4 +89,3 @@ fn main() {
     // print abstract syntax array
     println!("{asa:?}");
 }
-```
