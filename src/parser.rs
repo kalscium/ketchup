@@ -1,14 +1,14 @@
 //! The ketchup parser itself
 
 use std::fmt::Debug;
-use crate::{error::KError, node::{Node, NodeInfo}, OperInfo, Space, Span};
+use crate::{error::KError, node::{Node, NodeInfo}, oper::OperInfo, Space, Span};
 
 /// The ketchup parser itself
 #[derive(Debug)]
 pub struct Parser<'a, Token, Oper, Tokens, ASA, OperGen, Error>
 where
     Token: PartialEq + Debug + Clone,
-    Oper: Debug,
+    Oper: Debug + Clone,
     Error: Debug + Clone,
     Tokens: Iterator<Item = (Result<Token, Error>, Span)>,
     ASA: crate::asa::ASA<Oper = Oper>,
@@ -27,7 +27,7 @@ where
 impl<'a, Token, Oper, Tokens, ASA, OperGen, Error> Parser<'a, Token, Oper, Tokens, ASA, OperGen, Error>
 where
     Token: PartialEq + Debug + Clone,
-    Oper: Debug,
+    Oper: Debug + Clone,
     Error: Debug + Clone,
     Tokens: Iterator<Item = (Result<Token, Error>, Span)>,
     ASA: crate::asa::ASA<Oper = Oper>,

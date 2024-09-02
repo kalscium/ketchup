@@ -22,7 +22,6 @@ pub trait ASA: IntoIterator<Item = Node<Self::Oper>> + Default + Debug {
     fn is_empty(&self) -> bool;
 }
 
-
 /// The default implementation of `ASA` for a vector
 impl<Oper: Debug> ASA for Vec<Node<Oper>> {
     type Oper = Oper;

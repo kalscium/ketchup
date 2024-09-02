@@ -1,4 +1,4 @@
-use ketchup::{error::KError, node::Node, parser::Parser, OperInfo, Space, Span};
+use ketchup::{error::KError, node::Node, parser::Parser, oper::OperInfo, Space, Span};
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub enum Error {
