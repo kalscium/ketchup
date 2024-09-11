@@ -78,7 +78,7 @@ where
         }
 
         // compare against the last pointed node
-        if oper_info.precedence < pointed.precedence || oper_info.space == Space::None {
+        if oper_info.precedence <= pointed.precedence || oper_info.space == Space::None {
             // become owned by the pointed
 
             // check if there is enough space for another node input
@@ -107,7 +107,7 @@ where
             // take owernership of the pointed recursively
 
             // make sure that the oper has enough space to own the pointed
-            if oper_info.space == Space::None || (pointed.precedence == 0 && oper_info.space == Space::Single) { // single-spaced oper is not allowed due to the parser being left-aligned
+            if pointed.precedence == 0 && oper_info.space == Space::Single { // single-spaced oper is not allowed due to the parser being left-aligned
                 return Err(
                     KError::UnexpectedOper {
                         ctx_span: pointed.span.clone(),
