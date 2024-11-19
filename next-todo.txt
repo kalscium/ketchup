@@ -20,3 +20,5 @@
 	- haskell-like function calls are right-recursive
 - also instead of having a dynamic type for the space rules, just have separate functions for each space kind
 - only double-spaced operators have precedence (and perhaps single-spaced right-recursive)
+- rename zero, single and double-spaced operators as operands, unary and binary operations
+- an additional check for any neigboring unary nodes to the last operand node would fix a lot of issues when inserting a binary node, as there cannot be an alone neighboring unary node that isn't a part of it's neighbouring operand node

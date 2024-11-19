@@ -1,0 +1,38 @@
+# RULES OF KETCHUP
+---
+- ## Precedence
+	- All operand nodes have infinite precedence
+  - All right-aligned unary nodes have infinite-1 precedence *(slightly lower than operands though always higher than binary and light-aligned unary)*
+	- All left-aligned unary nodes have infinite-2 precedence *(slightly lower than operands & right-aligned unary nodes but still higher than binary nodes)*
+	- Binary nodes can have any precedence *(though lower than the above three)*
+	- Binary nodes are the only nodes that can have different precedences for each node
+- ## Nodes
+  - Nodes are simply an element in the ASA (Abstract Syntax Array)
+  - Nodes must have a unique type that determines it's recursive handed-ness, if it's an operand, unary or binary node, and also, if it's a unary node, it's alignment
+  - Each node type must only have one, recursive handed-ness, kind and alignment
+  - Nodes only need to be queried on their precedence (which should be derived from their internal type either way)
+  - Nodes *should* only store their type and internal data (important for literals like 12 or "hello")
+  - Nodes must be derived from at *least* one token from the lexer
+- ## ASA Operations
+	- the only operations that can be performed on an ASA are
+		- Pushing *(to the end of the array)*
+		- Insertions *(inserted to that location and shifting everything over)*
+	- For unary nodes *(left-aligned)* & operand nodes:
+		- If the completeness field is set to false, then simply push to the array
+		- Otherwise, throw an 'expected foo' error
+	- For binary nodes *(left & right recursive)* and unary nodes *(right-aligned, left & right recursive)*:
+		- Comparisions must first be performed on the first node *(to see if the precedence is greater or smaller)*, if smaller then insert to the start of the ASA, if greater, then compare against the last node *(if equal, refer to recursion rules)*
+			- As a side note, the last node will **always** be an operand node if the ASA is complete
+		- For 'comparisons' against the last node, check for any neighbouring unary nodes *(that have a larger precedence (if they are equal, then refer to recursion rules))* *(as they must be the parent to the last operand node due to fixed unary precedence)* and if there is, then keep traveling up the array until you find the last parent unary node that has a larger precedence and take ownership of it *(replace it / insert)*, if there is no parent unary node, then simply insert the node before the last node
+- ## Complete-ness
+	- The ASA is initialised with a completeness field set to false, as logically, if you expected an expr and didn't find one, that would be an error
+	- Operand nodes are the only nodes that can set the completeness field to true, and must cap off every ASA
+	- Operand and Unary *(left-aligned)* can only be pushed when the asa is incomplete
+	- Binary nodes are the only nodes that can set the completeness field to be false and can only be inserted when the completeness field is set to true
+		- Otherwise you must throw an 'unexpected foo, expected bar' error *(`1 // 2` not okay)*
+	- Unary *(right-aligned)* nodes are similar to their left counterparts except for their completeness rules being inverted; they can only be inserted when the ASA is complete *(completeness field is true)*
+		- otherwise they must throw an error *(unexpected foo, expected bar)*
+- ## Node recursion
+	- The logic for handling the case where the precedence is equal during comparisions against another node is intentionally left out in the previous parts due to it deciding the recursion handed-ness of that node
+	- For left-recursion, when the precedences are equal, treat the inserted node as if it had a smaller precedence
+  - For right-recursion, when the precedences are equal, treat the inserted node as if it had a greater precedence
