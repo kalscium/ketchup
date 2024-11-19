@@ -10,7 +10,7 @@
   - Nodes are simply an element in the ASA (Abstract Syntax Array)
   - Nodes must have a unique type that determines it's recursive handed-ness, if it's an operand, unary or binary node, and also, if it's a unary node, it's alignment
   - Each node type must only have one, recursive handed-ness, kind and alignment
-  - Nodes only need to be queried on their precedence (which should be derived from their internal type either way)
+  - Nodes only need to be queried on their precedence and kind (which should be derived from their internal type either way)
   - Nodes *should* only store their type and internal data (important for literals like 12 or "hello")
   - Nodes must be derived from at *least* one token from the lexer
 - ## ASA Operations
