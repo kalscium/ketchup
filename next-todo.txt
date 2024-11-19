@@ -1,0 +1,22 @@
+- the parser is LR(1) i think
+- fix the precedence logic (it's reversed)
+- remove the double_space dependance for the oper_generator
+- simplify ketchup through delegating the oper generation to the user of the library, so that ketchup never even touches the tokens, and instead just inserts the pre-generated nodes into an ASA (the array and a 'complete' field)
+- ketchup could be greatly simplified through a 'complete' variable, so the nodes in the asa themselves could just be the node type, as the precedence is implied through the node type, space rules however, can be completely replaced by a single field; the complete field
+- the complete field is initialised as false
+- if there is a double space value, and the complete field is false, an error occurs
+- if there is a single space value, and the complete field is true, an error occurs
+- if the complete field is false and the parser terminates, return an error, (empty exprs are not okay)
+- set the complete field based upon the last node
+- make the ketchup function iterator compatible, so that you can use it in a fold
+- if you really need the performance, the node types could just be byte/integer types alongside an id with no actual dynamic values (the id correlates to them), so the shift and insert operations are cheaper
+- you could also make a vector with padding in the start and end to make the performace even faster
+- find a solution to finding end tokens and returning the right errors (which are two exprs, and which are just a space error)
+- you could also include the ability to have right recursive parsing alongside the default left recursive
+	- this can be done by simply changing the ownership rules of same precedence operators, left recursive, it takes ownership (recursively), while right recursive, it just gets owned
+	- this also allows for single space operators when the asa is 'complete'
+	- you might even be able to create special half-half operators with special space rules like single-left or single-right or smth like that, or double-big or double-small
+	- function calls would also make sense on expressions if the function call is an operator that's single-left spaced, cuz it can't be an expr as the asa is 'completed' and it can't be a double-space(any) operator as it dosen't exist for '(*)' PERFECT
+	- haskell-like function calls are right-recursive
+- also instead of having a dynamic type for the space rules, just have separate functions for each space kind
+- only double-spaced operators have precedence (and perhaps single-spaced right-recursive)
