@@ -15,8 +15,13 @@
   - Nodes must be derived from at *least* one token from the lexer
 - ## ASA Operations
 	- the only operations that can be performed on an ASA are
+		- Initialisation of a new ASA with the complete flag set to false
 		- Pushing *(to the end of the array)*
+		- Pushing *(to the start of the array)*
 		- Insertions *(inserted to that location and shifting everything over)*
+		- Querying of Nodes
+		- Querying of length
+		- Getting and setting of the complete-ness field
 	- For unary nodes *(left-aligned)* & operand nodes:
 		- If the completeness field is set to false, then simply push to the array
 		- Otherwise, throw an 'expected foo' error
