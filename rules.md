@@ -13,6 +13,10 @@
   - Nodes only need to be queried on their precedence and kind (which should be derived from their internal type either way)
   - Nodes *should* only store their type and internal data (important for literals like 12 or "hello")
   - Nodes must be derived from at *least* one token from the lexer
+- ## Errors
+	- All errors can be detected through the usage of the 'complete' field
+	- The violating node for 'unexpected foo' errors are the additional node that is being added even though the ASA is already completed
+	- The violating node for 'expected foo' errors are the first unary or binary nodes encountered when travelling up the ASA from the last node
 - ## ASA Operations
 	- the only operations that can be performed on an ASA are
 		- Initialisation of a new ASA with the complete flag set to false
