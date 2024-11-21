@@ -6,6 +6,7 @@ pub mod node;
 pub mod asa;
 pub mod parse;
 pub mod error;
+pub mod prelude;
 
 /// The precedence of an operation / node
 pub type Precedence = u8;
