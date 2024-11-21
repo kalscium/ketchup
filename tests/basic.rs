@@ -115,3 +115,41 @@ fn unary_right_align_right_recursive() {
     assert!(*asa.completed());
     assert_eq!(asa.vector[..], [Node::Call(2), Node::Call(3), Node::Call(4), Node::Number(1)]);
 }
+
+#[test]
+fn incomplete_binary() {
+    let mut asa = VectorASA::<Node>::new();
+    parse::binary_node(Node::Add, true, &mut asa).unwrap_err();
+    parse::operand(Node::Number(1), &mut asa).unwrap();
+    parse::binary_node(Node::Add, true, &mut asa).unwrap();
+
+    assert!(!*asa.completed());
+}
+
+#[test]
+fn binary_left_recursive() {
+    let mut asa = VectorASA::<Node>::new();
+    parse::operand(Node::Number(11), &mut asa).unwrap();
+    parse::binary_node(Node::Add, true, &mut asa).unwrap();
+    parse::operand(Node::Number(2), &mut asa).unwrap();
+    parse::binary_node(Node::Sub, true, &mut asa).unwrap();
+    parse::unary_left_align(Node::Neg, &mut asa).unwrap();
+    parse::operand(Node::Number(4), &mut asa).unwrap();
+
+    assert!(*asa.completed());
+    assert_eq!(asa.vector[..], [Node::Sub, Node::Add, Node::Number(11), Node::Number(2), Node::Neg, Node::Number(4)]);
+}
+
+#[test]
+fn binary_right_recursive() {
+    let mut asa = VectorASA::<Node>::new();
+    parse::operand(Node::Number(11), &mut asa).unwrap();
+    parse::binary_node(Node::Add, false, &mut asa).unwrap();
+    parse::operand(Node::Number(2), &mut asa).unwrap();
+    parse::binary_node(Node::Sub, false, &mut asa).unwrap();
+    parse::unary_left_align(Node::Neg, &mut asa).unwrap();
+    parse::operand(Node::Number(4), &mut asa).unwrap();
+
+    assert!(*asa.completed());
+    assert_eq!(asa.vector[..], [Node::Add, Node::Number(11), Node::Sub, Node::Number(2), Node::Neg, Node::Number(4)]);
+}
