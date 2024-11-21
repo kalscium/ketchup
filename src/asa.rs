@@ -35,7 +35,8 @@ pub trait ASA {
 #[derive(Debug, Clone)]
 pub struct VectorASA<Node: node::Node> {
     complete: bool,
-    vector: Vec<Node>,
+    /// The internal vector
+    pub vector: Vec<Node>,
 }
 
 impl<Node: node::Node> ASA for VectorASA<Node> {

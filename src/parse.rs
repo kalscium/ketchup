@@ -1,7 +1,6 @@
 //! Functinos for parsing and manipulating the ASA
 
 use std::cmp::Ordering;
-
 use crate::{asa, error::Error, node::{Node, NodeKind}};
 
 /// Finds the last binary or unary node in the ASA
@@ -67,14 +66,33 @@ pub fn unary_right_align<ASA: asa::ASA>(node: ASA::Node, left_recursive: bool, a
         _ => (),
     }
 
-    // otherwise compare against the last node (check for neighboring unary nodes)
+    // otherwise compare against the last node (check for neighbouring unary nodes)
+    let neighbour = asa.get_node(asa.get_len()-2); // alright as there must be a node before the last node at this point in the code
+    match (neighbour.get_kind(), node.get_precedence().cmp(&neighbour.get_precedence())) {
+        (NodeKind::Unary, Ordering::Less) => (),
+        (NodeKind::Unary, Ordering::Equal) if left_recursive => (),
+        _ => {
+            // just insert before the last node and return
+            asa.insert(asa.get_len()-1, node);
+            return Ok(());
+        },
+    }
+
+    // at this point, the neighbouring unary node must be of a greater precedence
+
     if asa.get_node(asa.get_len()-2).get_kind() == NodeKind::Unary {
-        // get the last consecutive unary node starting from the neighboring node to the last node of the ASA
+        // get the last consecutive unary node of lower precedence starting from the neighboring node to the last node of the ASA
         let mut idx = asa.get_len()-2;
         for i in (0..asa.get_len()-1).rev() {
-            let current = asa.get_node(i);
-            if current.get_kind() != NodeKind::Unary {
-                idx = i-1;
+            let neighbour = asa.get_node(i);
+            // break if the current one is no longer a unary node of greater precedence
+            match (neighbour.get_kind(), node.get_precedence().cmp(&neighbour.get_precedence())) {
+                (NodeKind::Unary, Ordering::Less) => (),
+                (NodeKind::Unary, Ordering::Equal) if left_recursive => (),
+                _ => {
+                    idx = i - 1;
+                    break;
+                },
             }
         }
 

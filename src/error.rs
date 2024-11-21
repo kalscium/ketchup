@@ -1,8 +1,10 @@
 //! Enums for errors in ketchup
 
+use std::fmt::Debug;
 use crate::node;
 
 /// An error that can occur in ketchup
+#[derive(Debug, Clone)]
 pub enum Error<'a, Node: node::Node> {
     /// Occurs when there is an unexpected node inserted when the ASA is already complete, includes the unexpected node
     UnexpectedNode(Node),
