@@ -3,17 +3,32 @@
 use std::cmp::Ordering;
 use crate::{asa, error::Error, node::{Node, NodeKind}};
 
-/// Finds the last binary or unary node in the ASA
-pub fn last_unary_binary<ASA: asa::ASA>(asa: &mut ASA) -> Option<&ASA::Node> {
-    for i in (0..asa.get_len()).rev() {
+/// Walks up the ASA from the end and finds the unary or binary node that is incomplete and is therefore causing the error
+pub fn walk_incomplete_error<ASA: asa::ASA>(asa: &ASA) -> Option<&ASA::Node> { // not a perfect way to find errors
+    for i in (0..asa.get_len()).rev() { // could be made more efficient with if-guards
         let node = asa.get_node(i);
         match node.get_kind() {
-            NodeKind::Unary | NodeKind::Binary => return Some(asa.get_node(i)),
+            // if the unary node is at the end, then it can't be complete
+            NodeKind::Unary if i == asa.get_len()-1 => return Some(asa.get_node(i)),
+            // the last binary node (if there is no unary node at the end) cannot be complete
+            NodeKind::Binary => return Some(asa.get_node(i)),
+            // move on to the next node
             _ => (),
         }
     }
 
+    // can only occur when the ASA is empty
     None
+}
+
+/// Ensures that an ASA is completed, otherwise, returns a walked incomplete error
+pub fn ensure_completed<ASA: asa::ASA>(asa: &mut ASA) -> Result<(), Error<ASA::Node>> {
+    // check if the asa is complete
+    if *asa.completed() {
+        Ok(())
+    } else {
+        Err(Error::ExpectedNode(walk_incomplete_error(asa)))
+    }
 }
 
 /// Parses an operand node and inserts it into the ASA
@@ -46,7 +61,7 @@ pub fn unary_right_align<ASA: asa::ASA>(node: ASA::Node, left_recursive: bool, a
     // check if the asa is incomplete, if so, throw error
     if !*asa.completed() {
         return Err(Error::UnexpectedExpectedNode {
-            oper: last_unary_binary(asa),
+            oper: walk_incomplete_error(asa),
             found: node,
         });
     }
@@ -105,7 +120,7 @@ pub fn binary_node<ASA: asa::ASA>(node: ASA::Node, left_recursive: bool, asa: &m
     // check if the asa is incomplete, if so, throw error
     if !*asa.completed() {
         return Err(Error::UnexpectedExpectedNode {
-            oper: last_unary_binary(asa),
+            oper: walk_incomplete_error(asa),
             found: node,
         });
     }

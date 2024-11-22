@@ -1,4 +1,4 @@
-use ketchup::{asa::{VectorASA, ASA}, node::{self, NodeKind}, parse, Precedence};
+use ketchup::{asa::{VectorASA, ASA}, error::Error, node::{self, NodeKind}, parse, Precedence};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 enum Node {
@@ -119,7 +119,7 @@ fn unary_right_align_right_recursive() {
 #[test]
 fn incomplete_binary() {
     let mut asa = VectorASA::<Node>::new();
-    parse::binary_node(Node::Add, true, &mut asa).unwrap_err();
+    parse::binary_node(Node::Mul, true, &mut asa).unwrap_err();
     parse::operand(Node::Number(1), &mut asa).unwrap();
     parse::binary_node(Node::Add, true, &mut asa).unwrap();
 
@@ -152,4 +152,21 @@ fn binary_right_recursive() {
 
     assert!(*asa.completed());
     assert_eq!(asa.vector[..], [Node::Add, Node::Number(11), Node::Sub, Node::Number(2), Node::Neg, Node::Number(4)]);
+}
+
+#[test]
+fn incomplete_error_walking() {
+    let mut asa = VectorASA::<Node>::new();
+    parse::unary_left_align(Node::Neg, &mut asa).unwrap();
+    parse::unary_left_align(Node::Pos, &mut asa).unwrap();
+    parse::operand(Node::Number(12), &mut asa).unwrap();
+    parse::binary_node(Node::Div, true, &mut asa).unwrap();
+
+    assert!(!*asa.completed());
+    assert_eq!(Node::Div, *parse::walk_incomplete_error(&asa).unwrap());
+
+    let Err(Error::ExpectedNode(Some(Node::Div))) = parse::ensure_completed(&mut asa)
+    else {
+        panic!("assert failed");
+    };
 }
