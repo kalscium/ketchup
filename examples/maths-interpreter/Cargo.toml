@@ -1,0 +1,9 @@
+[package]
+name = "maths-interpreter"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+logos = "0.14"
+ariadne = "0.5"
+ketchup = { path = "../.." }
