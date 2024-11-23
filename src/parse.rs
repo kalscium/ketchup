@@ -1,4 +1,4 @@
-//! Functinos for parsing and manipulating the ASA
+//! Functions for parsing and manipulating the ASA
 
 use std::cmp::Ordering;
 use crate::{asa, error::Error, node::{Node, NodeKind}};
