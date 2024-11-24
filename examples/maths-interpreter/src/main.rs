@@ -1,11 +1,13 @@
 use ariadne::sources;
 use logos::Logos;
-use maths_interpreter::{error, parser, token::Token};
+use maths_interpreter::{error, interpreter, parser, token::Token};
 
 fn main() {
     let example = r##"
-        // 1 + 2 * -3 / +(4 - 5) *+ (12)-
-        1 * 2 +
+        // 1 + 2 * -3 / +(4 - 5) * 12 // *+ (12) // --(+8)
+
+        // 1 + 2 / 1 * 12 // ohno
+        1 + 2 * // ohno
     "##;
     let filename = "foo.bar";
 
@@ -19,5 +21,9 @@ fn main() {
         },
     };
 
-    println!("parsed expr: {expr:?}");
+    println!("asa: {expr:#?}");
+
+    let output = interpreter::walk(&mut expr.item.vector.into_iter());
+
+    println!("output: {output}");
 }
