@@ -10,6 +10,28 @@ pub struct Span {
     pub range: std::ops::Range<usize>,
 }
 
+impl ariadne::Span for Span {
+    type SourceId = String;
+
+    #[inline]
+    fn source(&self) -> &Self::SourceId { &self.filename }
+
+    #[inline]
+    fn start(&self) -> usize { self.range.start }
+
+    #[inline]
+    fn end(&self) -> usize { self.range.end }
+
+    #[inline]
+    fn len(&self) -> usize { self.range.end - self.range.start }
+
+    #[inline]
+    fn is_empty(&self) -> bool { self.range.is_empty() }
+
+    #[inline]
+    fn contains(&self, offset: usize) -> bool { self.range.contains(&offset) }
+}
+
 /// A value that is tagged with a span
 #[derive(Debug, Clone)]
 pub struct Spanned<T: Debug + Clone> {

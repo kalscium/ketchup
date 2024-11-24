@@ -60,6 +60,32 @@ impl Node for Expr {
     }
 }
 
+/// Parses an iterator of tokens
+pub fn parse(
+    tokens: &mut SpannedIter<Token>,
+    filename: &str,
+) -> Result<Spanned<VectorASA<Spanned<Expr>>>, Error> {
+    let next_tok = token::next_token(filename, tokens)?;
+
+    // ensure that the program isn't empty
+    if next_tok.is_none() {
+        return Err(Error::EmptyProgram(Span {
+            filename: filename.to_string(),
+            range: tokens.span(),
+        }));
+    }
+
+    // parse an expr
+    let NextTokWith { item: expr, next_tok } = parse_expr(next_tok, tokens, filename)?;
+
+    // make sure there are no more tokens following the expression
+    if let Some(Spanned { span, .. }) = next_tok {
+        return Err(Error::UnexpectedCharacter(span));
+    }
+
+    Ok(expr)
+}
+
 /// Parses an expr from a iterator of tokens
 pub fn parse_expr(
     first_tok: NextTok,
@@ -67,6 +93,7 @@ pub fn parse_expr(
     filename: &str
 ) -> Result<NextTokWith<VectorASA<Spanned<Expr>>>, Error> {
     let mut asa = VectorASA::new();
+    let start_span = first_tok.as_ref().map(|Spanned { span, .. }| span.clone());
 
     // iterate through all the tokens and parse each of them
     let mut current_tok = first_tok;
@@ -91,13 +118,13 @@ pub fn parse_expr(
             _ => {
                 // in this case, we should make sure the ASA is valid and then return the unknown token alongside the spanned ASA
                 parse::ensure_completed(&mut asa)?;
-                let span = Span {
+                let expr_span = Span {
                     filename: filename.to_string(),
-                    range: asa.get_node(0).span.range.start..asa.get_node(asa.get_len()-1).span.range.end,
+                    range: start_span.unwrap().range.start..asa.get_node(asa.get_len()-1).span.range.end,
                 };
 
                 return Ok(NextTokWith {
-                    item: Spanned::new(asa, span.clone()),
+                    item: Spanned::new(asa, expr_span.clone()),
                     next_tok: Some(Spanned::new(token, span)),
                 })
             },
@@ -111,7 +138,7 @@ pub fn parse_expr(
     parse::ensure_completed(&mut asa)?;
     let span = Span {
         filename: filename.to_string(),
-        range: asa.get_node(0).span.range.start..asa.get_node(asa.get_len()-1).span.range.end,
+        range: start_span.unwrap().range.start..asa.get_node(asa.get_len()-1).span.range.end,
     };
     Ok(NextTokWith {
         item: Spanned::new(asa, span),
@@ -125,8 +152,28 @@ pub fn parse_paren(
     tokens: &mut SpannedIter<'_, Token>,
     asa: &mut impl ASA<Node = Spanned<Expr>>,
 ) -> Result<(), Error> {
-    // parse the internal expr
+    // check for empty parentheses
     let next_tok = token::next_token(&start_span.filename, tokens)?;
+    match next_tok {
+        // closing parentheses
+        Some(Spanned { item: Token::RParen, span }) =>{
+            return Err(Error::EmptyParen {
+                span: Span { filename: start_span.filename.clone(), range: start_span.range.start..span.range.end },
+                expected_span: Span { filename: start_span.filename, range: start_span.range.end..start_span.range.end },
+            });
+        },
+        // EOF
+        None => {
+            return Err(Error::EmptyParen {
+                expected_span: Span { filename: start_span.filename.clone(), range: start_span.range.end..start_span.range.end },
+                span: start_span,
+            });
+        },
+        // expr (okay)
+        _ => (),
+    }
+    
+    // parse the internal expr
     let NextTokWith { item: expr, next_tok } = parse_expr(next_tok, tokens, &start_span.filename)?;
 
     // parse for the closing ')' character
