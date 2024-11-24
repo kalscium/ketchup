@@ -15,8 +15,9 @@
   - Nodes must be derived from at *least* one token from the lexer
 - ## Errors
 	- All errors can be detected through the usage of the 'complete' field
-	- The violating node for 'unexpected foo' errors are the additional node that is being added even though the ASA is already completed
-	- The violating node for 'expected foo' errors are the first unary or binary nodes encountered when travelling up the ASA from the last node
+	- The violating node for 'unexpected foo' errors is the additional node that is being added even though the ASA is already completed
+	- The violating operation node for 'expected foo' errors is either, the last node (if it's a unary node) or the first node (if it's a binary node) (check last then first nodes in that order), and if it's neither, then the ASA must be complete and the error is invalid
+	- The violating node for 'expected foo' errors is the first unary or binary nodes encountered when travelling up the ASA from the last node
 - ## ASA Operations
 	- the only operations that can be performed on an ASA are
 		- Initialisation of a new ASA with the complete flag set to false

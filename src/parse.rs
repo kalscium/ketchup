@@ -4,21 +4,30 @@ use std::cmp::Ordering;
 use crate::{asa, error::Error, node::{Node, NodeKind}};
 
 /// Walks up the ASA from the end and finds the unary or binary node that is incomplete and is therefore causing the error
-pub fn walk_incomplete_error<ASA: asa::ASA>(asa: &ASA) -> Option<&ASA::Node> { // not a perfect way to find errors
-    for i in (0..asa.get_len()).rev() { // could be made more efficient with if-guards
-        let node = asa.get_node(i);
-        match node.get_kind() {
-            // if the unary node is at the end, then it can't be complete
-            NodeKind::Unary if i == asa.get_len()-1 => return Some(asa.get_node(i)),
-            // the last binary node (if there is no unary node at the end) cannot be complete
-            NodeKind::Binary => return Some(asa.get_node(i)),
-            // move on to the next node
-            _ => (),
-        }
+pub fn walk_incomplete_error<ASA: asa::ASA>(asa: &ASA) -> Option<&ASA::Node> {
+    // if the ASA is empty, then just return None
+    if asa.get_len() == 0 {
+        return None;
     }
 
-    // can only occur when the ASA is empty
-    None
+    // if there is a unary node at the end, then it can't be complete
+    let node = asa.get_node(asa.get_len()-1);
+    if let NodeKind::Unary = node.get_kind() {
+        return Some(node);
+    }
+
+    // if there is a binary node at the start, and no unary node at the end, then it can't be complete
+    let node = asa.get_node(0);
+    if let NodeKind::Binary = node.get_kind() {
+        return Some(node);
+    }
+    
+    // unreachable as,
+    // if the asa is empty, it returns
+    // if there is a unary node at the end, it returns
+    // and if there is a binary node at the start, then it returns
+    // so that only leaves ONLY an operand, which means the ASA MUST be complete
+    unreachable!("incomplete error walking performed on complete ASA")
 }
 
 /// Ensures that an ASA is completed, otherwise, returns a walked incomplete error
