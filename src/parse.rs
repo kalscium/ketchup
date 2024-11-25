@@ -3,31 +3,18 @@
 use std::cmp::Ordering;
 use crate::{asa, error::Error, node::{Node, NodeKind}};
 
-/// Walks up the ASA from the end and finds the unary or binary node that is incomplete and is therefore causing the error
-pub fn walk_incomplete_error<ASA: asa::ASA>(asa: &ASA) -> Option<&ASA::Node> {
-    // if the ASA is empty, then just return None
-    if asa.get_len() == 0 {
-        return None;
-    }
+/// Returns a reference to the incomplete operation in the ASA
+pub fn incomplete_error<ASA: asa::ASA>(asa: &mut ASA) -> Option<&ASA::Node> {
+    // quick assert in case the user is using this function wrong
+    assert!(!*asa.is_complete(), "you shouldn't be returning an error for an incomplete ASA if the ASA is complete");
 
-    // if there is a unary node at the end, then it can't be complete
-    let node = asa.get_node(asa.get_len()-1);
-    if let NodeKind::Unary = node.get_kind() {
-        return Some(node);
+    // index into and return the troublesome node (if there is one)
+    let idx = asa.last_incomplete();
+    if let Some(idx) = *idx {
+        Some(asa.get_node(idx))
+    } else {
+        None
     }
-
-    // if there is a binary node at the start, and no unary node at the end, then it can't be complete
-    let node = asa.get_node(0);
-    if let NodeKind::Binary = node.get_kind() {
-        return Some(node);
-    }
-    
-    // unreachable as,
-    // if the asa is empty, it returns
-    // if there is a unary node at the end, it returns
-    // and if there is a binary node at the start, then it returns
-    // so that only leaves ONLY an operand, which means the ASA MUST be complete
-    unreachable!("incomplete error walking performed on complete ASA")
 }
 
 /// Ensures that an ASA is completed, otherwise, returns a walked incomplete error
@@ -36,7 +23,7 @@ pub fn ensure_completed<ASA: asa::ASA>(asa: &mut ASA) -> Result<(), Error<ASA::N
     if *asa.is_complete() {
         Ok(())
     } else {
-        Err(Error::ExpectedNode(walk_incomplete_error(asa)))
+        Err(Error::ExpectedNode(incomplete_error(asa)))
     }
 }
 
@@ -60,8 +47,13 @@ pub fn unary_left_align<ASA: asa::ASA>(node: ASA::Node, asa: &mut ASA) -> Result
     if *asa.is_complete() {
         return Err(Error::UnexpectedNode(node));
     }
+
     // otherwise push it without modifying complete-ness
     asa.push(node);
+
+    // also update the `last_incomplete` field
+    *asa.last_incomplete() = Some(asa.get_len()-1);
+
     Ok(())
 }
 
@@ -70,7 +62,7 @@ pub fn unary_right_align<ASA: asa::ASA>(node: ASA::Node, left_recursive: bool, a
     // check if the asa is incomplete, if so, throw error
     if !*asa.is_complete() {
         return Err(Error::UnexpectedExpectedNode {
-            oper: walk_incomplete_error(asa),
+            oper: incomplete_error(asa),
             found: node,
         });
     }
@@ -129,7 +121,7 @@ pub fn binary_node<ASA: asa::ASA>(node: ASA::Node, left_recursive: bool, asa: &m
     // check if the asa is incomplete, if so, throw error
     if !*asa.is_complete() {
         return Err(Error::UnexpectedExpectedNode {
-            oper: walk_incomplete_error(asa),
+            oper: incomplete_error(asa),
             found: node,
         });
     }
@@ -137,15 +129,21 @@ pub fn binary_node<ASA: asa::ASA>(node: ASA::Node, left_recursive: bool, asa: &m
     // compare against the first node of the ASA
     let first = asa.get_node(0);
     match node.get_precedence().cmp(&first.get_precedence()) {
-        // if the ndoe has a lower precedence or an equal precedence with left-recursion then insert to the start of the ASA and mark it incomplete
+        // if the ndoe has a lower precedence or an equal precedence with left-recursion then insert to the start of the ASA and update complete-ness fields
         Ordering::Less => {
             asa.push_start(node);
+
             *asa.is_complete() = false;
+            *asa.last_incomplete() = Some(0);
+
             return Ok(());
         },
         Ordering::Equal if left_recursive => {
             asa.push_start(node);
+
             *asa.is_complete() = false;
+            *asa.last_incomplete() = Some(0);
+
             return Ok(());
         },
         _ => (),
@@ -157,9 +155,13 @@ pub fn binary_node<ASA: asa::ASA>(node: ASA::Node, left_recursive: bool, asa: &m
         (NodeKind::Unary, Ordering::Less) => (),
         (NodeKind::Unary, Ordering::Equal) if left_recursive => (),
         _ => {
-            // just insert before the last node, mark incomplete and return
-            asa.insert(asa.get_len()-1, node);
+            // just insert before the last node, mark incomplete, update last incomplete and return
+            let idx = asa.get_len()-1;
+            asa.insert(idx, node);
+
             *asa.is_complete() = false;
+            *asa.last_incomplete() = Some(idx);
+
             return Ok(());
         },
     }
@@ -181,8 +183,10 @@ pub fn binary_node<ASA: asa::ASA>(node: ASA::Node, left_recursive: bool, asa: &m
         }
     }
 
-    // insert it at the index
+    // insert it at the index, and update completeness fields
     asa.insert(idx, node);
     *asa.is_complete() = false;
+    *asa.last_incomplete() = Some(idx);
+
     Ok(())
 }

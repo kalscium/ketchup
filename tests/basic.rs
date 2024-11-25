@@ -30,7 +30,7 @@ impl Node for MyNode {
 
     fn get_precedence(&self) -> Precedence {
         match self {
-            MyNode::Number(_) => unreachable!(),
+            MyNode::Number(_) => Precedence::MAX,
             MyNode::Call(_) => 3,
             MyNode::Pos => 2,
             MyNode::Neg => 2,
@@ -165,7 +165,7 @@ fn incomplete_error_walking() {
     parse::binary_node(MyNode::Div, true, &mut asa).unwrap();
 
     assert!(!*asa.is_complete());
-    assert_eq!(MyNode::Div, *parse::walk_incomplete_error(&asa).unwrap());
+    assert_eq!(MyNode::Div, *parse::incomplete_error(&mut asa).unwrap());
 
     let Err(Error::ExpectedNode(Some(MyNode::Div))) = parse::ensure_completed(&mut asa)
     else {
