@@ -22,3 +22,9 @@
 - only double-spaced operators have precedence (and perhaps single-spaced right-recursive)
 - rename zero, single and double-spaced operators as operands, unary and binary operations
 - an additional check for any neigboring unary nodes to the last operand node would fix a lot of issues when inserting a binary node, as there cannot be an alone neighboring unary node that isn't a part of it's neighbouring operand node
+-
+- ketchup DOES NOT WORK right now
+- the logic is wrong for binary and unary right-aligned nodes (comparing against the first and last node)
+- incomplete error walking is also still wrong, though it could be fixed with an extra field on the asa, the last_completed that would be set none by operands (complete asa) and set to Some(index of the current incomplete binary or left-align unary node) when there is a new binary or unary (left-align) node introduced
+- one possible solution to the binary&unary insertion problems could be to have an array of the first nodes of each of the precedences (array of Options) that gets indexed
+	- though that'll be inefficient and have to be updated every time something gets inserted

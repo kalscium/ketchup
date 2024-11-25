@@ -1,11 +1,10 @@
 # RULES OF KETCHUP
 ---
 - ## Precedence
-	- All operand nodes have infinite precedence
-  - All right-aligned unary nodes have infinite-1 precedence *(slightly lower than operands though always higher than binary and light-aligned unary)*
-	- All left-aligned unary nodes have infinite-2 precedence *(slightly lower than operands & right-aligned unary nodes but still higher than binary nodes)*
-	- Binary nodes can have any precedence *(though lower than the above three)*
-	- Binary nodes are the only nodes that can have different precedences for each node
+	- Operand nodes do not have precedence, and the querying of the precedence of an operand is a critical error within ketchup itself
+	- Unary (left and right aligned) and binary nodes can have any precedence ranging with in range of the precedence integer, given that it follows the below rule
+	- All precedence values **MUST** be in order from 0..=max_precedence_used, there **CANNOT** be any unused precedence values (gaps) (this is to make sure the precedence jumptable array is optimised)
+	- The precedence dictates the order of which operations are ordered in the ASA, with operations of lower precedence near the start of the array (no exceptions) and operations with larger precedence at the end, the ASA insertion rules ensures this order
 - ## Nodes
   - Nodes are simply an element in the ASA (Abstract Syntax Array)
   - Nodes must have a unique type that determines it's recursive handed-ness, if it's an operand, unary or binary node, and also, if it's a unary node, it's alignment
@@ -16,32 +15,36 @@
 - ## Errors
 	- All errors can be detected through the usage of the 'complete' field
 	- The violating node for 'unexpected foo' errors is the additional node that is being added even though the ASA is already completed
-	- The violating operation node for 'expected foo' errors is either, the last node (if it's a unary node) or the first node (if it's a binary node) (check last then first nodes in that order), and if it's neither, then the ASA must be complete and the error is invalid
-	- The violating node for 'expected foo' errors is the first unary or binary nodes encountered when travelling up the ASA from the last node
+	- The violating operation node (incomplete) for 'expected foo' errors can be found by simply querying the `last_incomplete` field of the ASA and indexing into it based upon the included index, note, the ASA must be incomplete otherwise the error is invalid
 - ## ASA Operations
-	- the only operations that can be performed on an ASA are
-		- Initialisation of a new ASA with the complete flag set to false
+	- the only operations that need to be implemented by a type that's implementing the ASA trait are:
+		- Initialisation of a new ASA with the complete flag set to false and the `last_incomplete` field and `precedence_jumptable`'s elements set to `None`
 		- Pushing *(to the end of the array)*
 		- Pushing *(to the start of the array)*
 		- Insertions *(inserted to that location and shifting everything over)*
 		- Querying of Nodes
 		- Querying of length
-		- Getting and setting of the complete-ness field
+		- Getting and setting of the `complete` field
+		- Getting and setting of the elements of the `precedence_jumptable` array
+		- Getting and setting of the `last_incomplete` field
 	- For unary nodes *(left-aligned)* & operand nodes:
-		- If the completeness field is set to false, then simply push to the array
-		- Otherwise, throw an 'expected foo' error
-	- For binary nodes *(left & right recursive)* and unary nodes *(right-aligned, left & right recursive)*:
-		- Comparisions must first be performed on the first node *(to see if the precedence is greater or smaller)*, if smaller then insert to the start of the ASA, if greater, then compare against the last node *(if equal, refer to recursion rules)*
-			- As a side note, the last node will **always** be an operand node if the ASA is complete
-		- For 'comparisons' against the last node, check for any neighbouring unary nodes *(that have a larger precedence (if they are equal, then refer to recursion rules))* *(as they must be the parent to the last operand node due to fixed unary precedence)* and if there is, then keep traveling up the array until you find the last parent unary node that has a larger precedence and take ownership of it *(replace it / insert)*, if there is no parent unary node, then simply insert the node before the last node
+		- If the `complete` field is set to false, then simply push to the array
+			- (for operand nodes only) then set the `complete` field to `true`
+		- Otherwise, throw an 'unexpected foo' error
+	- When inserting binary nodes *(left & right recursive)* and unary nodes *(right-aligned only, left & right recursive)*, refer to precedence jumptable rules
 - ## Complete-ness
-	- The ASA is initialised with a completeness field set to false, as logically, if you expected an expr and didn't find one, that would be an error
-	- Operand nodes are the only nodes that can set the completeness field to true, and must cap off every ASA
+	- The ASA is initialised with a `complete` field set to false, as logically, if you expected an expr and didn't find one, that would be an error
+	- Operand nodes are the only nodes that can set the `complete` field to true, and must cap off every ASA
 	- Operand and Unary *(left-aligned)* can only be pushed when the asa is incomplete
-	- Binary nodes are the only nodes that can set the completeness field to be false and can only be inserted when the completeness field is set to true
+	- Binary nodes are the only nodes that can set the `complete` field to be false and can only be inserted when the `complete` field is set to true
 		- Otherwise you must throw an 'unexpected foo, expected bar' error *(`1 // 2` not okay)*
-	- Unary *(right-aligned)* nodes are similar to their left counterparts except for their completeness rules being inverted; they can only be inserted when the ASA is complete *(completeness field is true)*
+	- Unary *(right-aligned)* nodes are similar to their left counterparts except for their `complete` rules being inverted; they can only be inserted when the ASA is complete *(`complete` field is true)*
 		- otherwise they must throw an error *(unexpected foo, expected bar)*
+	- Whenever a node is inserted that keeps or sets the `complete` field to false (binary & unary left-aligned) then update the `last_incomplete` field to the index of that node `Some(*)`
+- ## Precedence Jumptable Array
+	- The precedence jumptable is an array of optional indexes into the ASA, with the indexes corresponding to each of the posible precedences
+	- When inserting a binary or unary right-aligned node, first iterate through the jumptable (terminating at the precedence of the node itself), and if it finds a node of a smaller precedence (`Some(idx)`) then insert the node to that index and then update it's precedence in the jumptable and then increment all the jumptable entries of greater precedence by one
+	- If it can't find an entry of smaller precedence in the jumptable (for equal precedence refer to node recursion), then simply insert to the end of the ASA (not push) (replace the last node)
 - ## Node recursion
 	- The logic for handling the case where the precedence is equal during comparisions against another node is intentionally left out in the previous parts due to it deciding the recursion handed-ness of that node
 	- For left-recursion, when the precedences are equal, treat the inserted node as if it had a smaller precedence
