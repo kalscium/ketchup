@@ -9,7 +9,10 @@ use crate::Precedence;
 ///
 /// Nodes only need to be queried on their precedence and their kind (which is determined by their 'type')
 pub trait Node: Debug + Clone {
-    /// Queries the precedence of the node
+    /// The maximum precedence value used for these nodes, precedence values MUST be in order and have **NO GAPS**
+    const MAX_PRECEDENCE: Precedence;
+
+    /// Queries the precedence of the node (must be in order with **no gaps**)
     fn get_precedence(&self) -> Precedence;
     /// Queries the kind of node
     fn get_kind(&self) -> NodeKind;

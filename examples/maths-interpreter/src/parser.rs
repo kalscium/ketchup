@@ -105,8 +105,8 @@ pub fn parse_expr(
             Token::LParen => parse_paren(span, tokens, &mut asa)?,
 
             // unary left-aligned nodes (only if the ASA is incomplete)
-            Token::Plus if !*asa.completed() => parse::unary_left_align(Spanned::new(Expr::Pos, span), &mut asa)?,
-            Token::Dash if !*asa.completed() => parse::unary_left_align(Spanned::new(Expr::Neg, span), &mut asa)?,
+            Token::Plus if !*asa.is_complete() => parse::unary_left_align(Spanned::new(Expr::Pos, span), &mut asa)?,
+            Token::Dash if !*asa.is_complete() => parse::unary_left_align(Spanned::new(Expr::Neg, span), &mut asa)?,
 
             // binary nodes
             Token::Plus => parse::binary_node(Spanned::new(Expr::Add, span), true, &mut asa)?,

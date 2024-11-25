@@ -10,8 +10,7 @@
   - Nodes must have a unique type that determines it's recursive handed-ness, if it's an operand, unary or binary node, and also, if it's a unary node, it's alignment
   - Each node type must only have one, recursive handed-ness, kind and alignment
   - Nodes only need to be queried on their precedence and kind (which should be derived from their internal type either way)
-  - Nodes *should* only store their type and internal data (important for literals like 12 or "hello")
-  - Nodes must be derived from at *least* one token from the lexer
+  - Nodes *should* only store their type and internal data (important for literals like 12 or "hello") - Nodes must be derived from at *least* one token from the lexer
 - ## Errors
 	- All errors can be detected through the usage of the 'complete' field
 	- The violating node for 'unexpected foo' errors is the additional node that is being added even though the ASA is already completed
@@ -24,23 +23,24 @@
 		- Insertions *(inserted to that location and shifting everything over)*
 		- Querying of Nodes
 		- Querying of length
-		- Getting and setting of the `complete` field
+		- A constant that defines the **MAXIMUM** possible precedence
+		- Getting and setting of the `is_complete` field
 		- Getting and setting of the elements of the `precedence_jumptable` array
 		- Getting and setting of the `last_incomplete` field
 	- For unary nodes *(left-aligned)* & operand nodes:
-		- If the `complete` field is set to false, then simply push to the array
-			- (for operand nodes only) then set the `complete` field to `true`
+		- If the `is_complete` field is set to false, then simply push to the array
+			- (for operand nodes only) then set the `is_complete` field to `true`
 		- Otherwise, throw an 'unexpected foo' error
 	- When inserting binary nodes *(left & right recursive)* and unary nodes *(right-aligned only, left & right recursive)*, refer to precedence jumptable rules
 - ## Complete-ness
-	- The ASA is initialised with a `complete` field set to false, as logically, if you expected an expr and didn't find one, that would be an error
-	- Operand nodes are the only nodes that can set the `complete` field to true, and must cap off every ASA
+	- The ASA is initialised with a `is_complete` field set to false, as logically, if you expected an expr and didn't find one, that would be an error
+	- Operand nodes are the only nodes that can set the `is_complete` field to true, and must cap off every ASA
 	- Operand and Unary *(left-aligned)* can only be pushed when the asa is incomplete
-	- Binary nodes are the only nodes that can set the `complete` field to be false and can only be inserted when the `complete` field is set to true
+	- Binary nodes are the only nodes that can set the `is_complete` field to be false and can only be inserted when the `is_complete` field is set to true
 		- Otherwise you must throw an 'unexpected foo, expected bar' error *(`1 // 2` not okay)*
-	- Unary *(right-aligned)* nodes are similar to their left counterparts except for their `complete` rules being inverted; they can only be inserted when the ASA is complete *(`complete` field is true)*
+	- Unary *(right-aligned)* nodes are similar to their left counterparts except for their `is_complete` rules being inverted; they can only be inserted when the ASA is complete *(`is_complete` field is true)*
 		- otherwise they must throw an error *(unexpected foo, expected bar)*
-	- Whenever a node is inserted that keeps or sets the `complete` field to false (binary & unary left-aligned) then update the `last_incomplete` field to the index of that node `Some(*)`
+	- Whenever a node is inserted that keeps or sets the `is_complete` field to false (binary & unary left-aligned) then update the `last_incomplete` field to the index of that node `Some(*)`
 - ## Precedence Jumptable Array
 	- The precedence jumptable is an array of optional indexes into the ASA, with the indexes corresponding to each of the posible precedences
 	- When inserting a binary or unary right-aligned node, first iterate through the jumptable (terminating at the precedence of the node itself), and if it finds a node of a smaller precedence (`Some(idx)`) then insert the node to that index and then update it's precedence in the jumptable and then increment all the jumptable entries of greater precedence by one

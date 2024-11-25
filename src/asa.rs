@@ -1,6 +1,6 @@
 //! Traits for implementing an ASA
 
-use crate::node;
+use crate::{node, Precedence};
 
 /// An Abstract Syntax Array
 /// 
@@ -11,8 +11,8 @@ pub trait ASA {
     /// The internal node implementation
     type Node: node::Node;
 
-    /// Initialises a new ASA (incomplete)
-    fn new() -> Self;
+    /// Initialises a new ASA (incomplete) (max precedence is the largest precedence value that your parser uses, precedence values MUST be in order with **NO GAPS**)
+    fn new(max_precedence: Precedence) -> Self;
 
     /// Queries a node in the ASA (panic on out-of-bounds index)
     fn get_node(&self, idx: usize) -> &Self::Node;
@@ -27,14 +27,26 @@ pub trait ASA {
     /// Inserts a node into an index in the ASA (panic on out-of-bounds)
     fn insert(&mut self, idx: usize, node: Self::Node);
 
-    /// Returns a mutable pointer to the 'completed' flag/field of the ASA
-    fn completed(&mut self) -> &mut bool;
+    /// Returns a mutable pointer to the `completed` flag/field of the ASA
+    fn is_complete(&mut self) -> &mut bool;
+
+    /// Returns the **MAXIMUM** possible precedence (precedences **MUST** be in order with **no gaps**)
+    fn max_precedence(&self) -> Precedence;
+
+    /// Returns a mutable pointer to the `last_incomplete` field (index in the ASA)
+    fn last_incomplete(&mut self) -> &mut Option<usize>;
+
+    /// Returns a mutable pointer to the precedence jumptable array
+    fn precedence_jumptable(&mut self) -> &mut [Option<usize>];
 }
 
 /// An implementation of ASA that uses an underlying vector
 #[derive(Debug, Clone)]
 pub struct VectorASA<Node: node::Node> {
-    complete: bool,
+    is_complete: bool,
+    last_incomplete: Option<usize>,
+    max_precedence: Precedence,
+    precedence_jumptable: Box<[Option<usize>]>,
     /// The internal vector
     pub vector: Vec<Node>,
 }
@@ -43,9 +55,12 @@ impl<Node: node::Node> ASA for VectorASA<Node> {
     type Node = Node;
 
     #[inline]
-    fn new() -> Self {
+    fn new(max_precedence: Precedence) -> Self {
         Self {
-            complete: false,
+            is_complete: false,
+            last_incomplete: None,
+            max_precedence,
+            precedence_jumptable: vec![None; max_precedence+1].into_boxed_slice(),
             vector: Vec::new(),
         }
     }
@@ -76,7 +91,22 @@ impl<Node: node::Node> ASA for VectorASA<Node> {
     }
 
     #[inline]
-    fn completed(&mut self) -> &mut bool {
-        &mut self.complete
+    fn is_complete(&mut self) -> &mut bool {
+        &mut self.is_complete
+    }
+
+    #[inline]
+    fn last_incomplete(&mut self) -> &mut Option<usize> {
+        &mut self.last_incomplete
+    }
+
+    #[inline]
+    fn max_precedence(&self) -> Precedence {
+        self.max_precedence
+    }
+
+    #[inline]
+    fn precedence_jumptable(&mut self) -> &mut [Option<usize>] {
+        &mut self.precedence_jumptable
     }
 }

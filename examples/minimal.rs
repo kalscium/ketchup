@@ -11,6 +11,8 @@ enum Expr {
 
 // define the precedence and kind of the node
 impl ketchup::node::Node for Expr {
+    const MAX_PRECEDENCE: ketchup::Precedence = 2;
+
     fn get_kind(&self) -> ketchup::node::NodeKind {
         use ketchup::node::NodeKind;
 
@@ -29,18 +31,20 @@ impl ketchup::node::Node for Expr {
     }
 
     fn get_precedence(&self) -> ketchup::Precedence {
-        use ketchup::Precedence;
-
         match self {
             // precedence helps determine the order in which nodes get 'evaluated';
             // the larger the precedence, the 'earlier' it will get 'evaluated'
             //
-            // the precedence of a unary node should be higher than the precedence of operands,
-            // and no binary node can have a precedence higher than a unary node
-            // operand > unary > binary
-            Expr::Number(_) => Precedence::MAX,
-            Expr::Pos => Precedence::MAX-1,
-            Expr::Neg => Precedence::MAX-1,
+            // it is not possible to query the precedence of an operand and it won't ever happen unless ketchup has a critical bug so it's arlight to just panic
+
+            // operands
+            Expr::Number(_) => unreachable!(),
+
+            // unary nodes (left-align)
+            Expr::Pos => 2,
+            Expr::Neg => 2,
+
+            // binary nodes
             Expr::Mul => 1,
             Expr::Div => 1,
             Expr::Add => 0,
@@ -55,7 +59,7 @@ fn main() {
     use ketchup::prelude::*; // import common imports
 
     // initialise a new AbstractSyntaxArray
-    let mut asa = VectorASA::<Expr>::new();
+    let mut asa = VectorASA::<Expr>::new(Expr::MAX_PRECEDENCE);
 
     // parse a number
     let number = Expr::Number(12);
@@ -76,7 +80,7 @@ fn main() {
     parse::operand(number, &mut asa).unwrap();
 
     // verify everything is working
-    assert!(*asa.completed()); // verify that the ASA is not missing any expected nodes
+    assert!(*asa.is_complete()); // verify that the ASA is not missing any expected nodes
     assert_eq!( // verify that the abstract syntax array is correct *(if it wasn't this wouldn't be a very good library would it?)*
         asa.vector[..],
         [ // the array is structured really weirdly to help you visualise the structure of the ASA as a tree

@@ -33,7 +33,7 @@ pub fn walk_incomplete_error<ASA: asa::ASA>(asa: &ASA) -> Option<&ASA::Node> {
 /// Ensures that an ASA is completed, otherwise, returns a walked incomplete error
 pub fn ensure_completed<ASA: asa::ASA>(asa: &mut ASA) -> Result<(), Error<ASA::Node>> {
     // check if the asa is complete
-    if *asa.completed() {
+    if *asa.is_complete() {
         Ok(())
     } else {
         Err(Error::ExpectedNode(walk_incomplete_error(asa)))
@@ -43,13 +43,13 @@ pub fn ensure_completed<ASA: asa::ASA>(asa: &mut ASA) -> Result<(), Error<ASA::N
 /// Parses an operand node and inserts it into the ASA
 pub fn operand<ASA: asa::ASA>(node: ASA::Node, asa: &mut ASA) -> Result<(), Error<ASA::Node>> {
     // check if the asa is complete, if so, throw error
-    if *asa.completed() {
+    if *asa.is_complete() {
         return Err(Error::UnexpectedNode(node));
     }
 
     // otherwise, push it to the end of the ASA and update complete-ness field
     asa.push(node);
-    *asa.completed() = true;
+    *asa.is_complete() = true;
 
     Ok(())
 }
@@ -57,7 +57,7 @@ pub fn operand<ASA: asa::ASA>(node: ASA::Node, asa: &mut ASA) -> Result<(), Erro
 /// Parses a left-aligned unary node and inserts it into the ASA
 pub fn unary_left_align<ASA: asa::ASA>(node: ASA::Node, asa: &mut ASA) -> Result<(), Error<ASA::Node>> {
     // check if the asa is complete, if so, throw error
-    if *asa.completed() {
+    if *asa.is_complete() {
         return Err(Error::UnexpectedNode(node));
     }
     // otherwise push it without modifying complete-ness
@@ -68,7 +68,7 @@ pub fn unary_left_align<ASA: asa::ASA>(node: ASA::Node, asa: &mut ASA) -> Result
 /// Parses a right-aligned unary node and inserts it into the ASA based on if it's right or left recursive
 pub fn unary_right_align<ASA: asa::ASA>(node: ASA::Node, left_recursive: bool, asa: &mut ASA) -> Result<(), Error<ASA::Node>> {
     // check if the asa is incomplete, if so, throw error
-    if !*asa.completed() {
+    if !*asa.is_complete() {
         return Err(Error::UnexpectedExpectedNode {
             oper: walk_incomplete_error(asa),
             found: node,
@@ -127,7 +127,7 @@ pub fn unary_right_align<ASA: asa::ASA>(node: ASA::Node, left_recursive: bool, a
 /// Parses a binary node and inserts it into the ASA based on if it's left or right recursive
 pub fn binary_node<ASA: asa::ASA>(node: ASA::Node, left_recursive: bool, asa: &mut ASA) -> Result<(), Error<ASA::Node>> {
     // check if the asa is incomplete, if so, throw error
-    if !*asa.completed() {
+    if !*asa.is_complete() {
         return Err(Error::UnexpectedExpectedNode {
             oper: walk_incomplete_error(asa),
             found: node,
@@ -140,12 +140,12 @@ pub fn binary_node<ASA: asa::ASA>(node: ASA::Node, left_recursive: bool, asa: &m
         // if the ndoe has a lower precedence or an equal precedence with left-recursion then insert to the start of the ASA and mark it incomplete
         Ordering::Less => {
             asa.push_start(node);
-            *asa.completed() = false;
+            *asa.is_complete() = false;
             return Ok(());
         },
         Ordering::Equal if left_recursive => {
             asa.push_start(node);
-            *asa.completed() = false;
+            *asa.is_complete() = false;
             return Ok(());
         },
         _ => (),
@@ -159,7 +159,7 @@ pub fn binary_node<ASA: asa::ASA>(node: ASA::Node, left_recursive: bool, asa: &m
         _ => {
             // just insert before the last node, mark incomplete and return
             asa.insert(asa.get_len()-1, node);
-            *asa.completed() = false;
+            *asa.is_complete() = false;
             return Ok(());
         },
     }
@@ -183,6 +183,6 @@ pub fn binary_node<ASA: asa::ASA>(node: ASA::Node, left_recursive: bool, asa: &m
 
     // insert it at the index
     asa.insert(idx, node);
-    *asa.completed() = false;
+    *asa.is_complete() = false;
     Ok(())
 }

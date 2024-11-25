@@ -9,4 +9,4 @@ pub mod error;
 pub mod prelude;
 
 /// The precedence of an operation / node
-pub type Precedence = u8;
+pub type Precedence = usize;
