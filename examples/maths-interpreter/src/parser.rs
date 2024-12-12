@@ -23,6 +23,8 @@ pub enum Expr {
 }
 
 impl Node for Expr {
+    const MAX_PRECEDENCE: Precedence = 2;
+
     fn get_kind(&self) -> NodeKind {
         match self {
             // operands
@@ -44,12 +46,12 @@ impl Node for Expr {
     fn get_precedence(&self) -> Precedence {
         match self {
             // operands
-            Expr::Number(_) => Precedence::MAX,
-            Expr::Scoped(_) => Precedence::MAX,
+            Expr::Number(_) => unreachable!(),
+            Expr::Scoped(_) => unreachable!(),
 
             // unary
-            Expr::Pos => Precedence::MAX-1,
-            Expr::Neg => Precedence::MAX-1,
+            Expr::Pos => 2,
+            Expr::Neg => 2,
 
             // binary
             Expr::Mul => 1,
@@ -92,7 +94,7 @@ pub fn parse_expr(
     tokens: &mut SpannedIter<Token>,
     filename: &str
 ) -> Result<NextTokWith<VectorASA<Spanned<Expr>>>, Error> {
-    let mut asa = VectorASA::new();
+    let mut asa = VectorASA::new(Expr::MAX_PRECEDENCE);
     let start_span = first_tok.as_ref().map(|Spanned { span, .. }| span.clone());
 
     // iterate through all the tokens and parse each of them

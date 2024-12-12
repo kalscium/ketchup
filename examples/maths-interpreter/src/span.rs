@@ -50,6 +50,8 @@ impl<T: Debug + Clone> Spanned<T> {
 }
 
 impl<T: Debug + Clone + Node> Node for Spanned<T> {
+    const MAX_PRECEDENCE: ketchup::Precedence = T::MAX_PRECEDENCE;
+
     #[inline]
     fn get_kind(&self) -> ketchup::prelude::NodeKind {
         self.item.get_kind()
