@@ -3,7 +3,7 @@
 - ## Precedence
 	- Operand nodes do not have precedence, and the querying of the precedence of an operand is a critical error within ketchup itself
 	- Unary (left and right aligned) and binary nodes can have any precedence ranging with in range of the precedence integer, given that it follows the below rule
-	- All precedence values **MUST** be in order from 0..=max_precedence_used, there **CANNOT** be any unused precedence values (gaps) (this is to make sure the precedence jumptable array is optimised)
+	- All precedence values **MUST** be in order from 0..=max_precedence_used, there **CANNOT** be any unused precedence values (gaps) (this is to make sure the precedence index lookup-table array is optimised)
 	- The precedence dictates the order of which operations are ordered in the ASA, with operations of lower precedence near the start of the array (no exceptions) and operations with larger precedence at the end, the ASA insertion rules ensures this order
 - ## Nodes
   - Nodes are simply an element in the ASA (Abstract Syntax Array)
@@ -17,7 +17,7 @@
 	- The violating operation node (incomplete) for 'expected foo' errors can be found by simply querying the `last_incomplete` field of the ASA and indexing into it based upon the included index, note, the ASA must be incomplete otherwise the error is invalid
 - ## ASA Operations
 	- the only operations that need to be implemented by a type that's implementing the ASA trait are:
-		- Initialisation of a new ASA with the complete flag set to false and the `last_incomplete` field and `precedence_jumptable`'s elements set to `None`
+		- Initialisation of a new ASA with the complete flag set to false and the `last_incomplete` field and `precedence_index lookup-table`'s elements set to `None`
 		- Pushing *(to the end of the array)*
 		- Pushing *(to the start of the array)*
 		- Insertions *(inserted to that location and shifting everything over)*
@@ -25,13 +25,13 @@
 		- Querying of length
 		- A constant that defines the **MAXIMUM** possible precedence
 		- Getting and setting of the `is_complete` field
-		- Getting and setting of the elements of the `precedence_jumptable` array
+		- Getting and setting of the elements of the `precedence_index lookup-table` array
 		- Getting and setting of the `last_incomplete` field
 	- For unary nodes *(left-aligned)* & operand nodes:
 		- If the `is_complete` field is set to false, then simply push to the array
 			- (for operand nodes only) then set the `is_complete` field to `true`
 		- Otherwise, throw an 'unexpected foo' error
-	- When inserting binary nodes *(left & right recursive)* and unary nodes *(right-aligned only, left & right recursive)*, refer to precedence jumptable rules
+	- When inserting binary nodes *(left & right recursive)* and unary nodes *(right-aligned only, left & right recursive)*, refer to precedence index lookup-table rules
 - ## Complete-ness
 	- The ASA is initialised with a `is_complete` field set to false, as logically, if you expected an expr and didn't find one, that would be an error
 	- Operand nodes are the only nodes that can set the `is_complete` field to true, and must cap off every ASA
@@ -41,10 +41,11 @@
 	- Unary *(right-aligned)* nodes are similar to their left counterparts except for their `is_complete` rules being inverted; they can only be inserted when the ASA is complete *(`is_complete` field is true)*
 		- otherwise they must throw an error *(unexpected foo, expected bar)*
 	- Whenever a node is inserted that keeps or sets the `is_complete` field to false (binary & unary left-aligned) then update the `last_incomplete` field to the index of that node `Some(*)`
-- ## Precedence Jumptable Array
-	- The precedence jumptable is an array of optional indexes into the ASA, with the indexes corresponding to each of the posible precedences
-	- When inserting a binary or unary right-aligned node, first iterate through the jumptable (terminating at the precedence of the node itself), and if it finds a node of a smaller precedence (`Some(idx)`) then insert the node to that index and then update it's precedence in the jumptable and then increment all the jumptable entries of greater precedence by one
-	- If it can't find an entry of smaller precedence in the jumptable (for equal precedence refer to node recursion), then simply insert to the end of the ASA (not push) (replace the last node)
+- ## Precedence Index Lookup Array
+	- The precedence index lookup-table is an array of optional indexes into the ASA, with the indexes corresponding to each of the posible precedences
+	- When inserting a binary or unary right-aligned node, first iterate through the index lookup-table (terminating at the precedence of the node itself), and if it finds a node of a smaller precedence (`Some(idx)`) then insert the node to that index then increment all the index lookup-table entries of greater precedence by one
+	- If it can't find an entry of greater precedence in the index lookup-table (for equal precedence refer to node recursion), then simply insert to the end of the ASA (not push) (replace the last node)
+	- Ensure that after **EVERY** operation on the ASA that **doesn't** involve an **operand node**, that the index lookup-table is updated with the correct index of the latest node
 - ## Node recursion
 	- The logic for handling the case where the precedence is equal during comparisions against another node is intentionally left out in the previous parts due to it deciding the recursion handed-ness of that node
 	- For left-recursion, when the precedences are equal, treat the inserted node as if it had a smaller precedence

@@ -36,8 +36,8 @@ pub trait ASA {
     /// Returns a mutable pointer to the `last_incomplete` field (index in the ASA)
     fn last_incomplete(&mut self) -> &mut Option<usize>;
 
-    /// Returns a mutable pointer to the precedence jumptable array
-    fn precedence_jumptable(&mut self) -> &mut [Option<usize>];
+    /// Returns a mutable pointer to the precedence index lookup-table array
+    fn lookuptable(&mut self) -> &mut [Option<usize>];
 }
 
 /// An implementation of ASA that uses an underlying vector
@@ -106,7 +106,7 @@ impl<Node: node::Node> ASA for VectorASA<Node> {
     }
 
     #[inline]
-    fn precedence_jumptable(&mut self) -> &mut [Option<usize>] {
+    fn lookuptable(&mut self) -> &mut [Option<usize>] {
         &mut self.precedence_jumptable
     }
 }

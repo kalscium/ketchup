@@ -1,7 +1,6 @@
 //! Functions for parsing and manipulating the ASA
 
-use std::cmp::Ordering;
-use crate::{asa, error::Error, node::{Node, NodeKind}};
+use crate::{asa, error::Error, node::Node};
 
 /// Returns a reference to the incomplete operation in the ASA
 pub fn incomplete_error<ASA: asa::ASA>(asa: &mut ASA) -> Option<&ASA::Node> {
@@ -48,13 +47,54 @@ pub fn unary_left_align<ASA: asa::ASA>(node: ASA::Node, asa: &mut ASA) -> Result
         return Err(Error::UnexpectedNode(node));
     }
 
-    // otherwise push it without modifying complete-ness
+    // otherwise update the lookup-table and
+    asa.lookuptable()[node.get_precedence()] = Some(asa.get_len());
+
+    // push it without modifying complete-ness
     asa.push(node);
 
     // also update the `last_incomplete` field
     *asa.last_incomplete() = Some(asa.get_len()-1);
 
     Ok(())
+}
+
+/// Inserts a node into the ASA based on a precedence index lookup-table and it's recursive-ness (left or right), returns the index of which the node was inserted at
+fn insert_lookuptable<ASA: asa::ASA>(node: ASA::Node, left_recursive: bool, asa: &mut ASA) -> usize {
+    // determine the range of precedences lower than the current one
+    let range = if left_recursive {
+        node.get_precedence().. // treat equal precedence as lesser than
+    } else {
+        node.get_precedence()+1.. // treat equal precedence as greater than
+    };
+
+    // iterate through the lookup-table and find any indexes of greater precedence
+    let lower_prec = asa.lookuptable()[range]
+        .iter()
+        .find_map(|idx| idx.clone());
+
+    // if there is one, then simply insert at that index and update the lookup-table and return
+    if let Some(idx) = lower_prec {
+        // update the lookup-table
+        asa.lookuptable()[node.get_precedence()] = Some(idx);
+
+        // update the indexes of greater precedence through incrementing them
+        for idx in asa.lookuptable()[node.get_precedence()+1..].iter_mut() {
+            if let Some(idx) = idx {
+                *idx += 1;
+            }
+        }
+
+        asa.insert(idx, node);
+        return idx;
+    }
+
+    // otherwise, simply insert at the end of the ASA and update the lookup-table
+    let end = asa.get_len() - 1;
+    asa.lookuptable()[node.get_precedence()] = Some(end);
+    asa.insert(end, node);
+
+    end
 }
 
 /// Parses a right-aligned unary node and inserts it into the ASA based on if it's right or left recursive
@@ -67,52 +107,9 @@ pub fn unary_right_align<ASA: asa::ASA>(node: ASA::Node, left_recursive: bool, a
         });
     }
 
-    // compare against the first node of the ASA
-    let first = asa.get_node(0);
-    match node.get_precedence().cmp(&first.get_precedence()) {
-        // if the ndoe has a lower precedence or an equal precedence with left-recursion then insert to the start of the ASA
-        Ordering::Less => {
-            asa.push_start(node);
-            return Ok(());
-        },
-        Ordering::Equal if left_recursive => {
-            asa.push_start(node);
-            return Ok(());
-        },
-        _ => (),
-    }
+    // insert into the ASA based upon the lookup-table
+    insert_lookuptable(node, left_recursive, asa);
 
-    // otherwise compare against the last node (check for neighbouring unary nodes)
-    let neighbour = asa.get_node(asa.get_len()-2); // alright as there must be a node before the last node at this point in the code
-    match (neighbour.get_kind(), node.get_precedence().cmp(&neighbour.get_precedence())) {
-        (NodeKind::Unary, Ordering::Less) => (),
-        (NodeKind::Unary, Ordering::Equal) if left_recursive => (),
-        _ => {
-            // just insert before the last node and return
-            asa.insert(asa.get_len()-1, node);
-            return Ok(());
-        },
-    }
-
-    // at this point, the neighbouring unary node must be of a greater precedence
-
-    // get the last consecutive unary node of lower precedence starting from the neighboring node to the last node of the ASA
-    let mut idx = asa.get_len()-2;
-    for i in (0..asa.get_len()-1).rev() {
-        let neighbour = asa.get_node(i);
-        // break if the current one is no longer a unary node of greater precedence
-        match (neighbour.get_kind(), node.get_precedence().cmp(&neighbour.get_precedence())) {
-            (NodeKind::Unary, Ordering::Less) => (),
-            (NodeKind::Unary, Ordering::Equal) if left_recursive => (),
-            _ => {
-                idx = i - 1;
-                break;
-            },
-        }
-    }
-
-    // insert it at the index
-    asa.insert(idx, node);
     Ok(())
 }
 
@@ -126,65 +123,10 @@ pub fn binary_node<ASA: asa::ASA>(node: ASA::Node, left_recursive: bool, asa: &m
         });
     }
 
-    // compare against the first node of the ASA
-    let first = asa.get_node(0);
-    match node.get_precedence().cmp(&first.get_precedence()) {
-        // if the ndoe has a lower precedence or an equal precedence with left-recursion then insert to the start of the ASA and update complete-ness fields
-        Ordering::Less => {
-            asa.push_start(node);
+    // insert into the ASA based upon the lookuptable
+    let idx = insert_lookuptable(node, left_recursive, asa);
 
-            *asa.is_complete() = false;
-            *asa.last_incomplete() = Some(0);
-
-            return Ok(());
-        },
-        Ordering::Equal if left_recursive => {
-            asa.push_start(node);
-
-            *asa.is_complete() = false;
-            *asa.last_incomplete() = Some(0);
-
-            return Ok(());
-        },
-        _ => (),
-    }
-
-    // otherwise compare against the last node (check for neighbouring unary nodes)
-    let neighbour = asa.get_node(asa.get_len()-2); // alright as there must be a node before the last node at this point in the code
-    match (neighbour.get_kind(), node.get_precedence().cmp(&neighbour.get_precedence())) {
-        (NodeKind::Unary, Ordering::Less) => (),
-        (NodeKind::Unary, Ordering::Equal) if left_recursive => (),
-        _ => {
-            // just insert before the last node, mark incomplete, update last incomplete and return
-            let idx = asa.get_len()-1;
-            asa.insert(idx, node);
-
-            *asa.is_complete() = false;
-            *asa.last_incomplete() = Some(idx);
-
-            return Ok(());
-        },
-    }
-
-    // at this point, the neighbouring unary node must be of a greater precedence
-
-    // get the last consecutive unary node of lower precedence starting from the neighboring node to the last node of the ASA
-    let mut idx = asa.get_len()-2;
-    for i in (0..asa.get_len()-1).rev() {
-        let neighbour = asa.get_node(i);
-        // break if the current one is no longer a unary node of greater precedence
-        match (neighbour.get_kind(), node.get_precedence().cmp(&neighbour.get_precedence())) {
-            (NodeKind::Unary, Ordering::Less) => (),
-            (NodeKind::Unary, Ordering::Equal) if left_recursive => (),
-            _ => {
-                idx = i - 1;
-                break;
-            },
-        }
-    }
-
-    // insert it at the index, and update completeness fields
-    asa.insert(idx, node);
+    // update the completeness fields
     *asa.is_complete() = false;
     *asa.last_incomplete() = Some(idx);
 
