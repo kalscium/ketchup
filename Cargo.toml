@@ -18,6 +18,6 @@ path = "src/lib.rs"
 # ketchup-derive = { path = "../ketchup-derive" }
 
 [workspace]
-members = ["examples/maths-interpreter"
+members = [ "examples/benchmark","examples/maths-interpreter"
   # "examples/*"
 ]

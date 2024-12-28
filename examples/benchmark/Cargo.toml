@@ -1,0 +1,11 @@
+[package]
+name = "benchmark"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+rand = "0.8"
+maths-interpreter = { path = "../maths-interpreter" }
+logos = "0.14"
+nom = "7.1"
+
