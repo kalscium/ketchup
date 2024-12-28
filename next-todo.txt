@@ -12,14 +12,14 @@
 - if you really need the performance, the node types could just be byte/integer types alongside an id with no actual dynamic values (the id correlates to them), so the shift and insert operations are cheaper
 - you could also make a vector with padding in the start and end to make the performace even faster
 - find a solution to finding end tokens and returning the right errors (which are two exprs, and which are just a space error)
-- you could also include the ability to have right recursive parsing alongside the default left recursive
-	- this can be done by simply changing the ownership rules of same precedence operators, left recursive, it takes ownership (recursively), while right recursive, it just gets owned
+- you could also include the ability to have right associative parsing alongside the default left associative
+	- this can be done by simply changing the ownership rules of same precedence operators, left associative, it takes ownership (associatively), while right associative, it just gets owned
 	- this also allows for single space operators when the asa is 'complete'
 	- you might even be able to create special half-half operators with special space rules like single-left or single-right or smth like that, or double-big or double-small
 	- function calls would also make sense on expressions if the function call is an operator that's single-left spaced, cuz it can't be an expr as the asa is 'completed' and it can't be a double-space(any) operator as it dosen't exist for '(*)' PERFECT
-	- haskell-like function calls are right-recursive
+	- haskell-like function calls are right-associative
 - also instead of having a dynamic type for the space rules, just have separate functions for each space kind
-- only double-spaced operators have precedence (and perhaps single-spaced right-recursive)
+- only double-spaced operators have precedence (and perhaps single-spaced right-associative)
 - rename zero, single and double-spaced operators as operands, unary and binary operations
 - an additional check for any neigboring unary nodes to the last operand node would fix a lot of issues when inserting a binary node, as there cannot be an alone neighboring unary node that isn't a part of it's neighbouring operand node
 -

@@ -5,7 +5,7 @@ use crate::Precedence;
 
 /// An element in the **Abstract Syntax Array**
 ///
-/// Each node must have a 'type' the determines it's recursive handed-ness, it's precedence and what kind of node it is; an operand, unary (left-aligned), unary (right-aligned) or a binary node
+/// Each node must have a 'type' the determines it's association, it's precedence and what kind of node it is; an operand, unary (left-aligned), unary (right-aligned) or a binary node
 ///
 /// Nodes only need to be queried on their precedence and their kind (which is determined by their 'type')
 pub trait Node: Debug + Clone {

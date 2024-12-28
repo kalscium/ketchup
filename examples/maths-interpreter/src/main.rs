@@ -4,7 +4,7 @@ use maths_interpreter::{error, interpreter, parser, token::Token};
 
 fn main() {
     let example = r##"
-        // 1 + 2 * -3 / +(4 - 5) * 12 *+ (12) --(+8)
+        1 + 2 * -3 / +(4 - 5) * 12 *+ (12) --(+8)
     "##;
     let filename = "foo.bar";
 

@@ -59,10 +59,10 @@ pub fn unary_left_align<ASA: asa::ASA>(node: ASA::Node, asa: &mut ASA) -> Result
     Ok(())
 }
 
-/// Inserts a node into the ASA based on a precedence index lookup-table and it's recursive-ness (left or right), returns the index of which the node was inserted at
-fn insert_lookuptable<ASA: asa::ASA>(node: ASA::Node, left_recursive: bool, asa: &mut ASA) -> usize {
+/// Inserts a node into the ASA based on a precedence index lookup-table and it's association (left or right), returns the index of which the node was inserted at
+fn insert_lookuptable<ASA: asa::ASA>(node: ASA::Node, left_associative: bool, asa: &mut ASA) -> usize {
     // determine the range of precedences lower than the current one
-    let range = if left_recursive {
+    let range = if left_associative {
         node.get_precedence().. // treat equal precedence as lesser than
     } else {
         node.get_precedence()+1.. // treat equal precedence as greater than
@@ -97,8 +97,8 @@ fn insert_lookuptable<ASA: asa::ASA>(node: ASA::Node, left_recursive: bool, asa:
     end
 }
 
-/// Parses a right-aligned unary node and inserts it into the ASA based on if it's right or left recursive
-pub fn unary_right_align<ASA: asa::ASA>(node: ASA::Node, left_recursive: bool, asa: &mut ASA) -> Result<(), Error<ASA::Node>> {
+/// Parses a right-aligned unary node and inserts it into the ASA based on if it's right or left associative
+pub fn unary_right_align<ASA: asa::ASA>(node: ASA::Node, left_associative: bool, asa: &mut ASA) -> Result<(), Error<ASA::Node>> {
     // check if the asa is incomplete, if so, throw error
     if !*asa.is_complete() {
         return Err(Error::UnexpectedExpectedNode {
@@ -108,13 +108,13 @@ pub fn unary_right_align<ASA: asa::ASA>(node: ASA::Node, left_recursive: bool, a
     }
 
     // insert into the ASA based upon the lookup-table
-    insert_lookuptable(node, left_recursive, asa);
+    insert_lookuptable(node, left_associative, asa);
 
     Ok(())
 }
 
-/// Parses a binary node and inserts it into the ASA based on if it's left or right recursive
-pub fn binary_node<ASA: asa::ASA>(node: ASA::Node, left_recursive: bool, asa: &mut ASA) -> Result<(), Error<ASA::Node>> {
+/// Parses a binary node and inserts it into the ASA based on if it's left or right associative
+pub fn binary_node<ASA: asa::ASA>(node: ASA::Node, left_associative: bool, asa: &mut ASA) -> Result<(), Error<ASA::Node>> {
     // check if the asa is incomplete, if so, throw error
     if !*asa.is_complete() {
         return Err(Error::UnexpectedExpectedNode {
@@ -124,7 +124,7 @@ pub fn binary_node<ASA: asa::ASA>(node: ASA::Node, left_recursive: bool, asa: &m
     }
 
     // insert into the ASA based upon the lookuptable
-    let idx = insert_lookuptable(node, left_recursive, asa);
+    let idx = insert_lookuptable(node, left_associative, asa);
 
     // update the completeness fields
     *asa.is_complete() = false;

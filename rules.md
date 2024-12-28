@@ -7,8 +7,8 @@
 	- The precedence dictates the order of which operations are ordered in the ASA, with operations of lower precedence near the start of the array (no exceptions) and operations with larger precedence at the end, the ASA insertion rules ensures this order
 - ## Nodes
   - Nodes are simply an element in the ASA (Abstract Syntax Array)
-  - Nodes must have a unique type that determines it's recursive handed-ness, if it's an operand, unary or binary node, and also, if it's a unary node, it's alignment
-  - Each node type must only have one, recursive handed-ness, kind and alignment
+  - Nodes must have a unique type that determines it's associative-ness, if it's an operand, unary or binary node, and also, if it's a unary node, it's alignment
+  - Each node type must only have one, associative-ness, kind and alignment
   - Nodes only need to be queried on their precedence and kind (which should be derived from their internal type either way)
   - Nodes *should* only store their type and internal data (important for literals like 12 or "hello") - Nodes must be derived from at *least* one token from the lexer
 - ## Errors
@@ -31,7 +31,7 @@
 		- If the `is_complete` field is set to false, then simply push to the array
 			- (for operand nodes only) then set the `is_complete` field to `true`
 		- Otherwise, throw an 'unexpected foo' error
-	- When inserting binary nodes *(left & right recursive)* and unary nodes *(right-aligned only, left & right recursive)*, refer to precedence index lookup-table rules
+	- When inserting binary nodes *(left & right associative)* and unary nodes *(right-aligned only, left & right associative)*, refer to precedence index lookup-table rules
 - ## Complete-ness
 	- The ASA is initialised with a `is_complete` field set to false, as logically, if you expected an expr and didn't find one, that would be an error
 	- Operand nodes are the only nodes that can set the `is_complete` field to true, and must cap off every ASA
@@ -44,9 +44,9 @@
 - ## Precedence Index Lookup Array
 	- The precedence index lookup-table is an array of optional indexes into the ASA, with the indexes corresponding to each of the posible precedences
 	- When inserting a binary or unary right-aligned node, first iterate through the index lookup-table (terminating at the precedence of the node itself), and if it finds a node of a smaller precedence (`Some(idx)`) then insert the node to that index then increment all the index lookup-table entries of greater precedence by one
-	- If it can't find an entry of greater precedence in the index lookup-table (for equal precedence refer to node recursion), then simply insert to the end of the ASA (not push) (replace the last node)
+	- If it can't find an entry of greater precedence in the index lookup-table (for equal precedence refer to node association), then simply insert to the end of the ASA (not push) (replace the last node)
 	- Ensure that after **EVERY** operation on the ASA that **doesn't** involve an **operand node**, that the index lookup-table is updated with the correct index of the latest node
-- ## Node recursion
-	- The logic for handling the case where the precedence is equal during comparisions against another node is intentionally left out in the previous parts due to it deciding the recursion handed-ness of that node
-	- For left-recursion, when the precedences are equal, treat the inserted node as if it had a smaller precedence
-  - For right-recursion, when the precedences are equal, treat the inserted node as if it had a greater precedence
+- ## Node association
+	- The logic for handling the case where the precedence is equal during comparisions against another node is intentionally left out in the previous parts due to it deciding the association of that node
+	- For left-association, when the precedences are equal, treat the inserted node as if it had a smaller precedence
+  - For right-association, when the precedences are equal, treat the inserted node as if it had a greater precedence
